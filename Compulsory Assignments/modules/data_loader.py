@@ -36,13 +36,13 @@ COLUMN_DESCRIPTIONS = {
 }
 
 # Only these columns describe measured quantities suitable for line sparklines.
-MEASUREMENT_COLUMNS = {
+MEASUREMENT_COLUMNS = (
     "fill_level_ratio",
     "capacity_twh",
     "stored_energy_twh",
     "previous_week_fill_level_ratio",
     "weekly_fill_level_change",
-}
+)
 
 DATA_PATH = Path(__file__).resolve().parents[1] / "data" / "reservoirs.csv"
 
