@@ -1,0 +1,13 @@
+[project]
+name = "ind320"
+version = "0.1.0"
+description = "Course work for IND320 Data to Decision"
+requires-python = "==3.12.*"
+dependencies = [
+    "ipykernel",
+    "jupyterlab",
+    "matplotlib",
+    "pandas",
+    "plotly",
+    "streamlit",
+]

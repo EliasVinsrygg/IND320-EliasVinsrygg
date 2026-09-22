@@ -1,1 +1,5 @@
+# Local Python environment
+.venv/
+
+# Course material (kept locally, not sent to GitHub)
 Curriculum/
