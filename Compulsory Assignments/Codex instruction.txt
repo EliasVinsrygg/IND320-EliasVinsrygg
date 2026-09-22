@@ -1,0 +1,62 @@
+  Jeg arbeider med IND320 Compulsory Assignment 1. Jeg er ny til koding, så forklar hvert steg før du gjør det, vis terminalkommandoer før de kjøres, og
+  involver meg i viktige valg. Ikke endre filer før du først har forklart hva du vil gjøre og hvorfor.
+
+  Prosjektrot:
+  C:\Users\elias\Documents\IND320
+
+  Viktige regler:
+  - All oppgavekode skal ligge i `Compulsory Assignments`.
+  - `Curriculum` skal aldri endres.
+  - Python-miljøet ligger i `IND320\.venv`.
+  - GitHub-repositoryet er offentlig: https://github.com/EliasVinsrygg/IND320-EliasVinsrygg
+  - Vi arbeider på `dev`-grenen. Den er sist pushet og ren.
+  - Ikke commit/push uten at jeg ber om det.
+
+  Status:
+  - Siste commit på `dev`: `bfd4062 Improve Interactive chart page`.
+  - Appen har fire sider i `Compulsory Assignments/app_pages/`.
+  - Hovedfil: `Compulsory Assignments/streamlit_app.py`.
+  - Datafil for appen: `Compulsory Assignments/data/reservoirs.csv`.
+  - Originaldata leses i notebooken direkte fra `Curriculum/D2Dbook/data/reservoirs.csv`; den kopieres ikke eller endres.
+  - Appen bruker caching i `modules/data_loader.py`.
+  - `requirements.txt`, `pyproject.toml` og `uv.lock` finnes allerede. Plotly var allerede en avhengighet, så ikke installer eller endre avhengigheter uten
+  behov.
+
+  Interaktiv graf:
+  - Fil: `Compulsory Assignments/app_pages/interactive_chart.py`.
+  - Grafen bruker Plotly (`plotly.graph_objects` og `make_subplots`), ikke Altair.
+  - Plotly ble valgt fordi kursmaterialet viser Plotly, `st.plotly_chart`, hover, zoom/pan og `on_select="rerun"`.
+  - EL og VASS er gjensidig utelukkende `st.toggle`-brytere: slås én på, slås den andre av.
+  - Kapasitet og lagret energi vises stablet regionalt.
+  - Fyllingsgrader og ukentlig endring vises som separate linjer, fordi de ikke kan summeres faglig riktig.
+  - Norge (NO-0) er en helsvart linje uten punkter, med tykkelse 3. Regionlinjene har tykkelse 1.5.
+  - Grafen har hover, zoom, panorering, tidslinje og Plotly-utvalg.
+  - Kontrollene ligger over grafen og skal ikke flytte seg.
+
+  Viktig konflikt å løse før innlevering:
+  - Oppgaveteksten sier at periodevelgeren skal ha første måned som standard.
+  - Etter mitt ønske ble appen endret til de siste 36 månedene som standard (`2023-10` til `2026-09`).
+  - Ikke endre dette uten først å forklare konflikten og la meg velge om vi skal følge oppgaveteksten strengt eller beholde den bedre brukeropplevelsen.
+
+  Notebook:
+  - Fil: `Compulsory Assignments/notebooks/reservoirs_analysis.ipynb`.
+  - Analyse, engelske kolonnenavn, inspeksjon, area_type-stolpediagram, separate EL/VASS-figurer, felles nasjonale figurer og siste fem år er gjennomført.
+  - Notebooken har ingen lagrede feilutdata.
+  - Gjenstår: kort AI-erklæring, 300–500 ord logg om arbeidet (både Jupyter og Streamlit), lenke til GitHub, lenke til publisert Streamlit-app, sluttkontroll
+  av kommentarer og overskrifter, kjøre alle celler på nytt og eksportere til PDF.
+
+  App / innlevering gjenstår:
+  1. Fullføre innholdet på forside og «Project information»-siden. De er fortsatt enkle plassholdere.
+  2. Kvalitetssikre alle fire sider manuelt.
+  3. Avklare og eventuelt rette sliderens standardperiode.
+  4. Publisere eller verifisere Streamlit Cloud-appen og få korrekt URL.
+  5. Legge GitHub- og Streamlit-lenker inn i notebooken.
+  6. Kjøre notebooken fullt, eksportere den til PDF og kontrollere PDF-en.
+  7. Lage 5-minutters screencast.
+  8. Når jeg har godkjent resultatet: merge `dev` til `main`, test igjen, og push/oppdater publisering.
+
+  For å starte appen lokalt fra prosjektroten:
+  .\.venv\Scripts\python.exe -m streamlit run '.\Compulsory Assignments\streamlit_app.py'
+
+  Ikke anta at appen allerede kjører; sjekk først eller vis meg startkommandoen. Bruk Streamlit-skillene når du endrer Streamlit-kode. Test endringer med
+  Streamlit AppTest og forklar testresultatet enkelt.
