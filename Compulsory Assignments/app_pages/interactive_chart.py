@@ -1,3 +1,4 @@
+
 """Interactive Plotly-chart page for the IND320 reservoir statistics app."""
 
 import plotly.graph_objects as go
@@ -216,10 +217,9 @@ recent_month_range = (
 
 st.session_state.setdefault("show_el_areas", False)
 st.session_state.setdefault("show_vass_areas", False)
-stored_month_range = st.session_state.setdefault(
+st.session_state.setdefault(
     "selected_month_range", first_month_range
 )
-st.session_state["selected_month_range"] = normalize_month_range(stored_month_range)
 
 # Keep every control above the chart, so it never moves with chart output.
 with st.container(border=True):
@@ -252,7 +252,7 @@ with st.container(border=True):
         selected_month_range = st.select_slider(
             "Choose a period of months",
             options=month_options,
-            key="selected_month_range",
+            value=st.session_state["selected_month_range"],
         )
     with recent_years_column:
         st.button(
@@ -261,7 +261,9 @@ with st.container(border=True):
             on_click=set_recent_month_range,
             args=(recent_month_range,),
         )
-    start_month, end_month = normalize_month_range(selected_month_range)
+    selected_month_range = normalize_month_range(selected_month_range)
+    st.session_state["selected_month_range"] = selected_month_range
+    start_month, end_month = selected_month_range
 
 selected_data = reservoir_data.loc[
     (reservoir_data["month"] >= start_month)
