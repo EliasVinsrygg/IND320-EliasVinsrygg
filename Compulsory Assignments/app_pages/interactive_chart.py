@@ -247,18 +247,20 @@ with st.container(border=True):
             on_change=turn_off_el_when_vass_is_enabled,
         )
 
-    st.button(
-        "Change to recent data",
-        key="change_to_recent_data",
-        on_click=set_recent_month_range,
-        args=(recent_month_range,),
-    )
-
-    selected_month_range = st.select_slider(
-        "Choose a period of months",
-        options=month_options,
-        key="selected_month_range",
-    )
+    period_column, recent_years_column = st.columns([3, 1], vertical_alignment="bottom")
+    with period_column:
+        selected_month_range = st.select_slider(
+            "Choose a period of months",
+            options=month_options,
+            key="selected_month_range",
+        )
+    with recent_years_column:
+        st.button(
+            "Show recent years",
+            key="change_to_recent_data",
+            on_click=set_recent_month_range,
+            args=(recent_month_range,),
+        )
     start_month, end_month = normalize_month_range(selected_month_range)
 
 selected_data = reservoir_data.loc[
