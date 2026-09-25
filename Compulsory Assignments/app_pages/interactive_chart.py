@@ -62,6 +62,21 @@ def turn_off_el_when_vass_is_enabled() -> None:
         st.session_state["show_el_areas"] = False
 
 
+def set_recent_month_range(month_range: tuple[str, str]) -> None:
+    """Move the period slider to the most recent 36 months."""
+    st.session_state["selected_month_range"] = month_range
+
+
+def normalize_month_range(
+    selected_months: str | tuple[str, str],
+) -> tuple[str, str]:
+    """Return two endpoints when Streamlit supplies a single selected month."""
+    if isinstance(selected_months, str):
+        return selected_months, selected_months
+
+    return selected_months
+
+
 def add_measurement_traces(
     figure: go.Figure,
     data,
@@ -192,14 +207,19 @@ national_data = reservoir_data.loc[
 ].copy()
 month_options = national_data["month"].drop_duplicates().tolist()
 
-# A fresh visitor sees the final 36 months in the new range-slider control.
-default_month_range = (
+# Follow the assignment by showing the first month to a fresh visitor.
+first_month_range = (month_options[0], month_options[0])
+recent_month_range = (
     month_options[max(0, len(month_options) - 36)],
     month_options[-1],
 )
 
 st.session_state.setdefault("show_el_areas", False)
 st.session_state.setdefault("show_vass_areas", False)
+stored_month_range = st.session_state.setdefault(
+    "selected_month_range", first_month_range
+)
+st.session_state["selected_month_range"] = normalize_month_range(stored_month_range)
 
 # Keep every control above the chart, so it never moves with chart output.
 with st.container(border=True):
@@ -227,12 +247,19 @@ with st.container(border=True):
             on_change=turn_off_el_when_vass_is_enabled,
         )
 
-    start_month, end_month = st.select_slider(
+    st.button(
+        "Change to recent data",
+        key="change_to_recent_data",
+        on_click=set_recent_month_range,
+        args=(recent_month_range,),
+    )
+
+    selected_month_range = st.select_slider(
         "Choose a period of months",
         options=month_options,
-        value=default_month_range,
-        key="selected_month_range_last_three_years",
+        key="selected_month_range",
     )
+    start_month, end_month = normalize_month_range(selected_month_range)
 
 selected_data = reservoir_data.loc[
     (reservoir_data["month"] >= start_month)
