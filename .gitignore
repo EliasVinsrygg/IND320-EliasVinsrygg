@@ -1,5 +1,11 @@
 # Local Python environment
 .venv/
 
+# Local agent instructions
+AGENTS.md
+
+# Class assignments (kept locally, not sent to GitHub)
+Class Assignments/
+
 # Course material (kept locally, not sent to GitHub)
 Curriculum/
