@@ -4,10 +4,14 @@ version = "0.1.0"
 description = "Course work for IND320 Data to Decision"
 requires-python = "==3.12.*"
 dependencies = [
+    "cassandra-driver>=3.30.1",
     "ipykernel",
     "jupyterlab",
     "matplotlib",
     "pandas",
     "plotly",
+    "pymongo>=4.18.3",
+    "pyspark==3.5.1",
+    "setuptools>=84.0.0",
     "streamlit",
 ]

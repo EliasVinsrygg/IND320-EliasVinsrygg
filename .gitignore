@@ -1,9 +1,6 @@
 # Local Python environment
 .venv/
 
-# Local agent instructions
-AGENTS.md
-
 # Class assignments (kept locally, not sent to GitHub)
 Class Assignments/
 
@@ -12,3 +9,9 @@ Curriculum/
 
 # Peer review material (kept locally, not sent to GitHub)
 Peer_reviews/
+
+# Local agent instructions
+AGENTS.md
+
+# Local credentials (configuration files can still be tracked)
+.streamlit/secrets.toml
