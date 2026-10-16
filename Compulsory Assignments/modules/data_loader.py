@@ -1,9 +1,8 @@
-"""Load and prepare the local reservoir CSV for the Streamlit app."""
-
-from pathlib import Path
+"""Load and prepare NVE reservoir API data for the Streamlit app."""
 
 import pandas as pd
 import streamlit as st
+import requests
 
 
 # Keep the English names used in the notebook and Streamlit app in one place.
@@ -44,22 +43,40 @@ MEASUREMENT_COLUMNS = (
     "weekly_fill_level_change",
 )
 
-DATA_PATH = Path(__file__).resolve().parents[1] / "data" / "reservoirs.csv"
+API_URL = (
+    "https://biapi.nve.no/magasinstatistikk/api/Magasinstatistikk/HentOffentligData"
+)
 
-
-@st.cache_data
+@st.cache_data(ttl="1h")
 def load_reservoir_data() -> pd.DataFrame:
-    """Read the local CSV once per cache and return an English analysis version."""
-    data = pd.read_csv(DATA_PATH).rename(columns=COLUMN_NAMES)
-    data["date"] = pd.to_datetime(data["date"])
+    """Fetch NVE reservoir data and prepare it for the app."""
+    # Stop with a clear HTTP error if NVE does not return a successful response.
+    response = requests.get(API_URL, timeout=60)
+    response.raise_for_status()
+    records = response.json()
 
-    return data.sort_values(["date", "area_type", "area_number"]).reset_index(
-        drop=True
-    )
+    # The full-data endpoint should return a list of observations.
+    if not isinstance(records, list) or not records:
+        raise ValueError("NVE returned no list of reservoir observations.")
+
+    data = pd.DataFrame(records)
+
+    # Detect API field changes before the charts fail later with a KeyError.
+    missing_columns = set(COLUMN_NAMES) - set(data.columns)
+    if missing_columns:
+        raise ValueError(f"Missing NVE columns: {sorted(missing_columns)}")
+
+    # Transelate column names and convert the date column to a datetime type.
+    data = data.rename(columns=COLUMN_NAMES)
+    data["date"] = pd.to_datetime(data["date"], errors="raise")
+
+    return data.sort_values(
+        ["date", "area_type", "area_number"]
+    ).reset_index(drop=True)
 
 
 def build_column_summary(data: pd.DataFrame) -> tuple[pd.DataFrame, pd.Period]:
-    """Create one table row per imported column with January 1995 sparklines."""
+    """Create one table row per imported column with first-month sparklines."""
     national_data = data.loc[
         (data["area_type"] == "NO") & (data["area_number"] == 0)
     ].copy()

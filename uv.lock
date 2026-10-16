@@ -478,6 +478,7 @@ dependencies = [
     { name = "plotly" },
     { name = "pymongo" },
     { name = "pyspark" },
+    { name = "requests" },
     { name = "setuptools" },
     { name = "streamlit" },
 ]
@@ -492,6 +493,7 @@ requires-dist = [
     { name = "plotly" },
     { name = "pymongo", specifier = ">=4.18.3" },
     { name = "pyspark", specifier = "==3.5.1" },
+    { name = "requests", specifier = ">=2.34.2" },
     { name = "setuptools", specifier = ">=84.0.0" },
     { name = "streamlit" },
 ]
