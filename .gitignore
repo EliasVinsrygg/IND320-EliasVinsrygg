@@ -15,3 +15,7 @@ AGENTS.md
 
 # Local credentials (configuration files can still be tracked)
 .streamlit/secrets.toml
+
+
+# Deliverables are PDFs and are submitted to Canvas, not GitHub
+deliverables/
