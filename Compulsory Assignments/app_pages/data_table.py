@@ -22,11 +22,12 @@ st.write(
 with st.spinner("Loading NVE reservoir data..."):
     reservoir_data = load_reservoir_data()
 
-# Metadata describes columns; measurements receive numeric trend lists.
+# Keep descriptive fields separate from the columns that contain measurements.
 metadata = pd.DataFrame([
     {"Column": column, "Description": COLUMN_DESCRIPTIONS[column]}
     for column in reservoir_data.columns if column not in MEASUREMENT_COLUMNS
 ])
+# Use the national NO-0 series for every sparkline, so areas are not mixed.
 national_data = reservoir_data.loc[
     (reservoir_data["area_type"] == "NO")
     & (reservoir_data["area_number"] == 0)
@@ -34,7 +35,7 @@ national_data = reservoir_data.loc[
 if national_data.empty:
     raise ValueError("The national reservoir series (NO-0) is missing from the data.")
 
-# Anchor the sparkline window to the latest published national observation.
+# Count back one year from the latest observation, rather than today's date.
 last_date = national_data["date"].max()
 year_start = last_date - pd.DateOffset(years=1)
 recent_data = national_data.loc[national_data["date"] >= year_start]
@@ -43,7 +44,7 @@ measurements = pd.DataFrame([
     {
         "Column": column,
         "Description": COLUMN_DESCRIPTIONS[column],
-        # LineChartColumn expects each cell to contain a list of numbers.
+        # Streamlit draws one small line from the values in this list.
         "Last year": recent_data[column].dropna().astype(float).tolist(),
     }
     for column in MEASUREMENT_COLUMNS
@@ -73,6 +74,7 @@ st.dataframe(
 st.subheader("Dataset preview")
 st.caption("Browse pages without sending the whole dataset to the table at once.")
 rows_per_page = st.selectbox("Rows per page", options=[20, 50, 100])
+# Turn the number of rows into a page count for the page picker.
 page_count = max(1, math.ceil(len(reservoir_data) / rows_per_page))
 page = st.number_input("Page", min_value=1, max_value=page_count, value=1)
 

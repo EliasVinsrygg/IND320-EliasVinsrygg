@@ -3,103 +3,16 @@
 import calendar
 
 import numpy as np
-import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
 import streamlit as st
 
+from modules.flow_plotting import build_energy_pie_chart, build_power_chart
 from modules.mongo_loader import get_available_flows, get_monthly_flows
-
-
-# Keep each transfer direction the same colour in both charts.
-DIRECTION_COLORS = {"Into Norway": "#D62728", "Out of Norway": "#315D8C"}
-
-
-def gaussian_smooth(values, sigma):
-    """Average nearby power blocks with Gaussian weights, keeping edge values valid."""
-    offsets = np.arange(-4 * sigma, 4 * sigma + 1)
-    weights = np.exp(-offsets**2 / (2 * sigma**2))
-    weights /= weights.sum()
-
-    # Divide by the available weights at each edge, where neighbours are missing.
-    padding = 4 * sigma
-    weighted_power = np.convolve(np.pad(values, padding), weights, mode="valid")
-    available_weight = np.convolve(
-        np.pad(np.ones(len(values)), padding), weights, mode="valid"
-    )
-    return weighted_power / available_weight
-
-
-def add_power_segment(timestamps, power_values, blocks, sigma):
-    """Append one uninterrupted set of blocks without joining it to the next."""
-    if not blocks:
-        return
-    values = [block["power_mw"] for block in blocks]
-    if sigma > 0:
-        values = gaussian_smooth(values, sigma)
-    timestamps.extend([block["timestamp_utc"] for block in blocks])
-    power_values.extend(values)
-    # Extend the last value to the end of its published block, then break the line.
-    timestamps.extend([blocks[-1]["end_utc"], None])
-    power_values.extend([values[-1], None])
-
-
-def build_power_chart(monthly_flows, selected_months, sigma=0):
-    """Draw published or Gaussian-smoothed MW lines for selected UTC months."""
-    figure = go.Figure()
-    for direction, label in (
-        ("import", "Into Norway"),
-        ("export", "Out of Norway"),
-    ):
-        timestamps = []
-        power_values = []
-        selected_blocks = []
-        for document in monthly_flows:
-            if document["direction"] == direction and document["month"] in selected_months:
-                selected_blocks.extend(document["blocks"])
-
-        # Join adjacent blocks across month boundaries before smoothing.
-        # Actual gaps, overlaps, and unselected months still break the line.
-        segment = []
-        for block in sorted(selected_blocks, key=lambda item: item["timestamp_utc"]):
-            if segment and block["timestamp_utc"] != segment[-1]["end_utc"]:
-                add_power_segment(timestamps, power_values, segment, sigma)
-                segment = []
-            segment.append(block)
-        add_power_segment(timestamps, power_values, segment, sigma)
-
-        if timestamps:
-            figure.add_trace(go.Scatter(
-                x=timestamps,
-                y=power_values,
-                name=label,
-                mode="lines",
-                line={"color": DIRECTION_COLORS[label]},
-                line_shape="linear" if sigma > 0 else "hv",
-                connectgaps=False,
-            ))
-
-    figure.update_layout(
-        xaxis_title="Time (UTC)",
-        legend_title_text="Direction",
-        # Place the direction key above the plot instead of beside it.
-        legend={"orientation": "h", "x": 1, "xanchor": "right",
-                "y": 1.03, "yanchor": "bottom"},
-        margin={"l": 45, "r": 10, "t": 75, "b": 45},
-        hovermode="x unified",
-    )
-    # A horizontal unit label leaves the left margin for tick values.
-    figure.add_annotation(
-        text="Power (MW)", x=0, y=1.03, xref="paper", yref="paper",
-        xanchor="left", yanchor="bottom", showarrow=False,
-    )
-    return figure
 
 
 st.header("Cross-border flows")
 st.write("Compare physical electricity flows into and out of Norway.")
 
-# A complete calendar year is needed for a full-year energy comparison.
+# Limit the annual view to 2024 and 2025; 2026 is still in progress.
 complete_years = {2024, 2025}
 available_pairs = [
     (country, year)
@@ -121,8 +34,7 @@ with left_column:
     )
     selected_year = st.selectbox("Year", years)
 
-    # The notebook stored one MWh total per month and direction. Add twelve
-    # months, then convert MWh to TWh before drawing the pie chart.
+    # The page checks that all months are present before drawing an annual total.
     monthly_flows = get_monthly_flows(selected_country, selected_year)
     expected_months = {(month, direction)
                        for month in range(1, 13)
@@ -131,27 +43,8 @@ with left_column:
     if actual_months != expected_months:
         st.warning("This connection does not have a complete year in MongoDB.")
     else:
-        pie_data = pd.DataFrame([
-            {
-                "flow": "Into Norway" if direction == "import" else "Out of Norway",
-                "energy_twh": sum(
-                    row["energy_mwh"] for row in monthly_flows
-                    if row["direction"] == direction
-                ) / 1_000_000,
-            }
-            for direction in ("import", "export")
-        ])
-        figure = px.pie(
-            pie_data,
-            names="flow",
-            values="energy_twh",
-            title=f"Norway and {selected_country}, {selected_year}",
-            labels={"flow": "Direction", "energy_twh": "Energy (TWh)"},
-            color="flow",
-            color_discrete_map=DIRECTION_COLORS,
-        )
-        figure.update_traces(textinfo="label+percent")
-        st.plotly_chart(figure, width="stretch")
+        pie_chart = build_energy_pie_chart(monthly_flows, selected_country, selected_year)
+        st.plotly_chart(pie_chart, width="stretch")
 
 with right_column:
     st.subheader("Monthly power")
@@ -172,7 +65,7 @@ with right_column:
             key="flow_months",
             wrap=True,
         )
-        # Equal slider steps represent small changes first and larger changes later.
+        # The choices advance by one block at first, then by larger amounts.
         sigma_values = [0, *sorted({int(value) for value in np.geomspace(1, 200, 50).round()})]
         sigma = st.select_slider(
             "Gaussian smoothing (0 = off)",
@@ -194,7 +87,7 @@ with right_column:
             else:
                 st.warning("No power blocks are available for these months.")
 
-# Keep the source explanation below both charts, available when needed.
+# Keep the source note under both charts so it applies to the whole page.
 with st.expander("About the data"):
     st.markdown(
         "Source: [ENTSO-E Transparency Platform, Physical Flows (12.1.G)]"

@@ -4,6 +4,7 @@ import streamlit as st
 
 
 st.header("Project information")
+# Explain where the two datasets come from and how the app presents them.
 st.markdown(
     "This app brings together work from **IND320 Compulsory Assignments 1 and 2**. "
     "It explores Norwegian reservoir statistics and physical electricity flows "

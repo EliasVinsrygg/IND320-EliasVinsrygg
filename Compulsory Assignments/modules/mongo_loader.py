@@ -10,14 +10,14 @@ COLLECTION = "monthly_flows"
 
 @st.cache_resource
 def get_mongo_client() -> MongoClient:
-    """Reuse one MongoDB connection across Streamlit reruns."""
+    """Open MongoDB with the private URI and reuse the client on app reruns."""
     # The same [mongo].uri secret is used by the notebook and hosted app.
     return MongoClient(st.secrets["mongo"]["uri"], serverSelectionTimeoutMS=10000)
 
 
 @st.cache_data(ttl=600)
 def get_available_flows() -> list[tuple[str, int]]:
-    """Return the country and year pairs present in MongoDB."""
+    """List saved country-year pairs for the page controls; refresh every 10 minutes."""
     collection = get_mongo_client()[DATABASE][COLLECTION]
     # Read only the small fields needed to build the page's controls.
     documents = collection.find({}, {"_id": 0, "country": 1, "year": 1})
@@ -26,9 +26,9 @@ def get_available_flows() -> list[tuple[str, int]]:
 
 @st.cache_data(ttl=600, max_entries=20)
 def get_monthly_flows(country: str, year: int) -> list[dict]:
-    """Read one country's monthly energy totals and power blocks for a year."""
+    """Read one country's monthly totals and MW blocks; cache them for 10 minutes."""
     collection = get_mongo_client()[DATABASE][COLLECTION]
-    # Month selection happens in the page, so changing pills needs no new query.
+    # Read the whole chosen year once; month clicks then use the cached result.
     documents = collection.find(
         {"country": country, "year": year},
         {"_id": 0, "country": 1, "year": 1, "month": 1,

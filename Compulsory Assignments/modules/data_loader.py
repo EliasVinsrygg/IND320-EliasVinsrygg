@@ -5,7 +5,7 @@ import streamlit as st
 import requests
 
 
-# Keep the English names used in the notebook and Streamlit app in one place.
+# Translate NVE's field names to the English names used by the notebook and app.
 COLUMN_NAMES = {
     "dato_Id": "date",
     "omrType": "area_type",
@@ -49,34 +49,36 @@ API_URL = (
 
 @st.cache_data(ttl="1h")
 def load_reservoir_data() -> pd.DataFrame:
-    """Fetch NVE reservoir data and prepare it for the app."""
-    # Stop with a clear HTTP error if NVE does not return a successful response.
+    """Download NVE's full dataset, name its columns, and reuse it for one hour."""
+    # Check the response before trying to turn it into a table.
     response = requests.get(API_URL, timeout=60)
     response.raise_for_status()
     records = response.json()
 
-    # The full-data endpoint should return a list of observations.
+    # Each item in the API response should be one observation.
     if not isinstance(records, list) or not records:
         raise ValueError("NVE returned no list of reservoir observations.")
 
     data = pd.DataFrame(records)
 
-    # Detect API field changes before the charts fail later with a KeyError.
+    # Report changed or missing API fields here, before a page tries to plot them.
     missing_columns = set(COLUMN_NAMES) - set(data.columns)
     if missing_columns:
         raise ValueError(f"Missing NVE columns: {sorted(missing_columns)}")
 
-    # Transelate column names and convert the date column to a datetime type.
+    # Use the same English names as the notebook and make dates sortable.
     data = data.rename(columns=COLUMN_NAMES)
     data["date"] = pd.to_datetime(data["date"], errors="raise")
 
+    # Keep rows in time and area order for tables and plots.
     return data.sort_values(
         ["date", "area_type", "area_number"]
     ).reset_index(drop=True)
 
 
 def build_column_summary(data: pd.DataFrame) -> tuple[pd.DataFrame, pd.Period]:
-    """Create one table row per imported column with first-month sparklines."""
+    """Describe each column and add a small trend from NO-0's first month."""
+    # NO-0 is the national series; regional area systems would mix different places.
     national_data = data.loc[
         (data["area_type"] == "NO") & (data["area_number"] == 0)
     ].copy()
@@ -84,6 +86,7 @@ def build_column_summary(data: pd.DataFrame) -> tuple[pd.DataFrame, pd.Period]:
     if national_data.empty:
         raise ValueError("The national reservoir series (NO-0) is missing from the data.")
 
+    # Use one calendar month so all measurement sparklines cover the same dates.
     first_month = national_data["date"].min().to_period("M")
     first_month_data = national_data.loc[
         national_data["date"].dt.to_period("M") == first_month
@@ -91,7 +94,7 @@ def build_column_summary(data: pd.DataFrame) -> tuple[pd.DataFrame, pd.Period]:
 
     summary_rows = []
     for column in data.columns:
-        # Chart columns require lists of numbers. Metadata remains visible but blank.
+        # A sparkline needs a list of numbers; metadata has no numeric trend.
         if column in MEASUREMENT_COLUMNS:
             sparkline_values = first_month_data[column].astype(float).tolist()
             chart_note = "First-month measurement series"

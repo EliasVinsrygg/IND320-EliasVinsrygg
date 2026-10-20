@@ -5,7 +5,7 @@ import pandas as pd
 
 
 def plot_national_overview(data: pd.DataFrame, title: str) -> None:
-    """Plot national reservoir measurements in two aligned panels.
+    """Show the NO-0 measurements for the dates supplied by the caller.
 
     The upper panel combines fill levels in percent with energy measurements in
     TWh on a second y-axis. The lower panel shows weekly fill-level change in
@@ -19,7 +19,7 @@ def plot_national_overview(data: pd.DataFrame, title: str) -> None:
         height_ratios=[3, 1],
     )
 
-    # Plot fill levels as percentages on the left axis of the upper panel.
+    # The API stores fill levels as ratios, so multiply by 100 for percentages.
     fill_line = ax_levels.plot(
         data["date"],
         data["fill_level_ratio"] * 100,
@@ -38,7 +38,7 @@ def plot_national_overview(data: pd.DataFrame, title: str) -> None:
     ax_levels.set_ylabel("Fill level (%)")
     ax_levels.grid(alpha=0.3)
 
-    # Plot stored energy and the constant capacity in TWh on the right axis.
+    # Energy is in TWh, so give it an axis separate from fill-level percentages.
     ax_energy = ax_levels.twinx()
     stored_energy_line = ax_energy.plot(
         data["date"],
@@ -69,7 +69,7 @@ def plot_national_overview(data: pd.DataFrame, title: str) -> None:
     )
     ax_levels.set_title(title)
 
-    # Plot weekly fill-level change in its own lower panel.
+    # A ratio change times 100 is a change in percentage points.
     ax_change.plot(
         data["date"],
         data["weekly_fill_level_change"] * 100,
