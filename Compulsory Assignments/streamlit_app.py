@@ -28,6 +28,11 @@ selected_page = st.navigation(
             icon=":material/analytics:",
         ),
         st.Page(
+            "app_pages/cross_border_flows.py",
+            title="Cross-border flows",
+            icon=":material/swap_horiz:",
+        ),
+        st.Page(
             "app_pages/project_information.py",
             title="Project information",
             icon=":material/info:",

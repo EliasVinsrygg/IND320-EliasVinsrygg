@@ -22,6 +22,45 @@ uv sync
 uv run streamlit run "Compulsory Assignments/streamlit_app.py"
 ```
 
+Always start Streamlit from `IND320/`, rather than `Compulsory Assignments/`.
+Project settings are kept together in the repository root:
+
+```text
+IND320/
+  .streamlit/
+    config.toml
+    secrets.toml  # Local credentials; ignored by Git.
+  pyproject.toml
+  uv.lock
+  Compulsory Assignments/
+    streamlit_app.py
+    app_pages/
+    modules/
+    notebooks/
+    data/
+```
+
+### Local MongoDB credentials
+
+Edit `.streamlit/secrets.toml` in the repository root and set the `[mongo]`
+section's `uri` value to your Atlas connection string. Replace the database
+password placeholder locally. The initial empty value must be filled before
+connecting to MongoDB. Do not share the file or include credentials in notebook
+outputs. This format follows the course's MongoDB example using
+`st.secrets["mongo"]["uri"]`.
+
+For the hosted app, enter the same TOML configuration in Streamlit Community
+Cloud's secrets settings; the local file is not uploaded through Git.
+
+### Local ENTSO-E security token
+
+In the repository root's `.streamlit/secrets.toml`, add your ENTSO-E security
+token as the `security_token` value under `[entsoe]`. The section is already
+present locally with an empty value ready to fill in. Keep the token out of
+notebooks, outputs, screenshots, and commits. The local secrets file is ignored
+by Git; if the hosted app needs the token later, add the same section in
+Streamlit Community Cloud's secrets settings.
+
 ## Data
 
 The app reads the local `data/reservoirs.csv` dataset. It caches the source

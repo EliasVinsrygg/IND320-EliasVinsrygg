@@ -8,6 +8,7 @@ from plotly.subplots import make_subplots
 from modules.data_loader import MEASUREMENT_COLUMNS, load_reservoir_data
 
 
+# Each measurement needs its own label, unit conversion, and plotting rule.
 PLOT_SETTINGS = {
     "fill_level_ratio": {
         "label": "Fill level",
@@ -52,30 +53,20 @@ REGIONAL_COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"]
 
 
 def turn_off_vass_when_el_is_enabled() -> None:
-    """Keep the two alternative regional systems mutually exclusive."""
+    """Hide VASS when the user chooses EL, so area systems do not overlap."""
     if st.session_state["show_el_areas"]:
         st.session_state["show_vass_areas"] = False
 
 
 def turn_off_el_when_vass_is_enabled() -> None:
-    """Keep the two alternative regional systems mutually exclusive."""
+    """Hide EL when the user chooses VASS, so area systems do not overlap."""
     if st.session_state["show_vass_areas"]:
         st.session_state["show_el_areas"] = False
 
 
 def set_recent_month_range(month_range: tuple[str, str]) -> None:
-    """Move the period slider to the most recent 36 months."""
-    st.session_state["selected_month_range"] = month_range
-
-
-def normalize_month_range(
-    selected_months: str | tuple[str, str],
-) -> tuple[str, str]:
-    """Return two endpoints when Streamlit supplies a single selected month."""
-    if isinstance(selected_months, str):
-        return selected_months, selected_months
-
-    return selected_months
+    """Move the period control to the 36-month range supplied by the page."""
+    st.session_state["chart_month_range"] = month_range
 
 
 def add_measurement_traces(
@@ -86,7 +77,7 @@ def add_measurement_traces(
     area_type: str | None,
     show_legend: bool,
 ) -> None:
-    """Add regional traces and the emphasised national reference trace.
+    """Add the chosen measurement for each region and for Norway as a whole.
 
     Capacity and stored energy can be added across regions, and are therefore
     shown as stacked areas. Fill levels and weekly changes are shown as lines,
@@ -95,6 +86,7 @@ def add_measurement_traces(
     settings = PLOT_SETTINGS[measurement]
 
     if area_type is not None:
+        # Keep only the selected regional system before drawing its areas.
         regional_data = data.loc[data["area_type"] == area_type]
         for color_index, (area_number, area_data) in enumerate(
             regional_data.groupby("area_number", sort=True)
@@ -118,6 +110,7 @@ def add_measurement_traces(
             }
 
             if settings["can_stack"]:
+                # Capacity and stored energy add across regions; ratios do not.
                 trace_arguments["stackgroup"] = f"{area_type}_{measurement}"
                 trace_arguments["fillcolor"] = REGIONAL_COLORS[
                     color_index % len(REGIONAL_COLORS)
@@ -125,6 +118,7 @@ def add_measurement_traces(
 
             figure.add_trace(go.Scatter(**trace_arguments), row=row, col=1)
 
+    # NO-0 stays visible as a reference regardless of the regional choice.
     national_data = data.loc[
         (data["area_type"] == "NO") & (data["area_number"] == 0)
     ]
@@ -149,7 +143,7 @@ def add_measurement_traces(
 
 
 def build_chart(data, measurements: list[str], area_type: str | None) -> go.Figure:
-    """Build one Plotly figure with one row for each requested measurement."""
+    """Give each selected measurement its own row and keep their dates aligned."""
     subplot_titles = [PLOT_SETTINGS[measurement]["label"] for measurement in measurements]
     figure = make_subplots(
         rows=len(measurements),
@@ -159,6 +153,7 @@ def build_chart(data, measurements: list[str], area_type: str | None) -> go.Figu
         subplot_titles=subplot_titles,
     )
 
+    # Reuse the same trace rules for one measurement or the full set.
     for row, measurement in enumerate(measurements, start=1):
         add_measurement_traces(
             figure,
@@ -199,8 +194,9 @@ st.caption(
     "weekly changes are shown as separate regional lines because they cannot be added."
 )
 
-# The cached loader reads the local CSV only once per data change.
+# The loader caches the NVE response for one hour; copy it before adding a column.
 reservoir_data = load_reservoir_data().copy()
+# Month labels make the two ends of the period control easy to compare.
 reservoir_data["month"] = reservoir_data["date"].dt.to_period("M").astype(str)
 national_data = reservoir_data.loc[
     (reservoir_data["area_type"] == "NO")
@@ -208,8 +204,7 @@ national_data = reservoir_data.loc[
 ].copy()
 month_options = national_data["month"].drop_duplicates().tolist()
 
-# Follow the assignment by showing the first month to a fresh visitor.
-first_month_range = (month_options[0], month_options[0])
+# Start with the same recent 36 months offered by the button below.
 recent_month_range = (
     month_options[max(0, len(month_options) - 36)],
     month_options[-1],
@@ -217,9 +212,6 @@ recent_month_range = (
 
 st.session_state.setdefault("show_el_areas", False)
 st.session_state.setdefault("show_vass_areas", False)
-st.session_state.setdefault(
-    "selected_month_range", first_month_range
-)
 
 # Keep every control above the chart, so it never moves with chart output.
 with st.container(border=True):
@@ -252,7 +244,9 @@ with st.container(border=True):
         selected_month_range = st.select_slider(
             "Choose a period of months",
             options=month_options,
-            value=st.session_state["selected_month_range"],
+            # A two-value default makes this a range slider on every rerun.
+            value=recent_month_range,
+            key="chart_month_range",
         )
     with recent_years_column:
         st.button(
@@ -261,15 +255,16 @@ with st.container(border=True):
             on_click=set_recent_month_range,
             args=(recent_month_range,),
         )
-    selected_month_range = normalize_month_range(selected_month_range)
-    st.session_state["selected_month_range"] = selected_month_range
+    # A range slider always supplies a start and end month for filtering.
     start_month, end_month = selected_month_range
 
+# Apply both slider ends before building the chart; only these months are plotted.
 selected_data = reservoir_data.loc[
     (reservoir_data["month"] >= start_month)
     & (reservoir_data["month"] <= end_month)
 ].copy()
 selected_area_type = "EL" if show_el else "VASS" if show_vass else None
+# The same chart function accepts either one measurement or all of them.
 selected_measurements = (
     list(MEASUREMENT_COLUMNS)
     if selected_measurement == ALL_MEASUREMENTS
@@ -290,6 +285,7 @@ selection_event = st.plotly_chart(
     config={"scrollZoom": True, "displaylogo": False},
 )
 
+# Report chart selections without changing the data shown in the plot.
 selected_points = selection_event.selection.points
 if selected_points:
     st.caption(
