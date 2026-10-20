@@ -199,13 +199,6 @@ with st.expander("About the data"):
     st.markdown(
         "Source: [ENTSO-E Transparency Platform, Physical Flows (12.1.G)]"
         "(https://transparency.entsoe.eu/transmission/physicalFlows). "
-        "A connection on this page is a pair of countries, not an individual cable. "
-        "The CA2 notebook retrieves flows between Norway and six foreign countries. "
-        "It converts published average power (MW) and interval length into energy "
-        "(MWh), stores the data in Cassandra with Spark, extracts the plot columns "
-        "with Spark, and saves monthly documents in MongoDB. This page reads those "
-        "saved documents. The pie chart sums import and export energy for a complete "
-        "calendar year (TWh); the lines show power in the selected months (MW). "
-        "Times are UTC. These values describe cross-border transfers, not electricity "
-        "production. The page reflects the latest data saved by the notebook."
+        "The data has been uploaded to a separate MongoDB database, and is"
+        " not automatically updated."
     )
