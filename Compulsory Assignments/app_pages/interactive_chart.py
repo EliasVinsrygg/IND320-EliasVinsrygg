@@ -65,17 +65,7 @@ def turn_off_el_when_vass_is_enabled() -> None:
 
 def set_recent_month_range(month_range: tuple[str, str]) -> None:
     """Move the period slider to the most recent 36 months."""
-    st.session_state["selected_month_range"] = month_range
-
-
-def normalize_month_range(
-    selected_months: str | tuple[str, str],
-) -> tuple[str, str]:
-    """Return two endpoints when Streamlit supplies a single selected month."""
-    if isinstance(selected_months, str):
-        return selected_months, selected_months
-
-    return selected_months
+    st.session_state["chart_month_range"] = month_range
 
 
 def add_measurement_traces(
@@ -199,7 +189,7 @@ st.caption(
     "weekly changes are shown as separate regional lines because they cannot be added."
 )
 
-# The cached loader reads the local CSV only once per data change.
+# The NVE API response is cached for one hour across app reruns.
 reservoir_data = load_reservoir_data().copy()
 reservoir_data["month"] = reservoir_data["date"].dt.to_period("M").astype(str)
 national_data = reservoir_data.loc[
@@ -208,8 +198,7 @@ national_data = reservoir_data.loc[
 ].copy()
 month_options = national_data["month"].drop_duplicates().tolist()
 
-# Follow the assignment by showing the first month to a fresh visitor.
-first_month_range = (month_options[0], month_options[0])
+# Start new visitors at the same recent period as the button below.
 recent_month_range = (
     month_options[max(0, len(month_options) - 36)],
     month_options[-1],
@@ -217,9 +206,6 @@ recent_month_range = (
 
 st.session_state.setdefault("show_el_areas", False)
 st.session_state.setdefault("show_vass_areas", False)
-st.session_state.setdefault(
-    "selected_month_range", first_month_range
-)
 
 # Keep every control above the chart, so it never moves with chart output.
 with st.container(border=True):
@@ -252,7 +238,9 @@ with st.container(border=True):
         selected_month_range = st.select_slider(
             "Choose a period of months",
             options=month_options,
-            value=st.session_state["selected_month_range"],
+            # A two-value default makes this a range slider on every rerun.
+            value=recent_month_range,
+            key="chart_month_range",
         )
     with recent_years_column:
         st.button(
@@ -261,8 +249,7 @@ with st.container(border=True):
             on_click=set_recent_month_range,
             args=(recent_month_range,),
         )
-    selected_month_range = normalize_month_range(selected_month_range)
-    st.session_state["selected_month_range"] = selected_month_range
+    # A range slider always supplies a start and end month for filtering.
     start_month, end_month = selected_month_range
 
 selected_data = reservoir_data.loc[
