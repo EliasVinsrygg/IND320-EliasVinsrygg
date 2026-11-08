@@ -1,5 +1,5 @@
 
-"""Interactive Plotly-chart page for the IND320 reservoir statistics app."""
+"""Reservoir statistics page with an interactive Plotly chart."""
 
 import plotly.graph_objects as go
 import streamlit as st
@@ -52,18 +52,6 @@ NATIONAL_LABEL = "Norway (NO-0)"
 REGIONAL_COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"]
 
 
-def turn_off_vass_when_el_is_enabled() -> None:
-    """Hide VASS when the user chooses EL, so area systems do not overlap."""
-    if st.session_state["show_el_areas"]:
-        st.session_state["show_vass_areas"] = False
-
-
-def turn_off_el_when_vass_is_enabled() -> None:
-    """Hide EL when the user chooses VASS, so area systems do not overlap."""
-    if st.session_state["show_vass_areas"]:
-        st.session_state["show_el_areas"] = False
-
-
 def set_recent_month_range(month_range: tuple[str, str]) -> None:
     """Move the period control to the 36-month range supplied by the page."""
     st.session_state["chart_month_range"] = month_range
@@ -77,7 +65,7 @@ def add_measurement_traces(
     area_type: str | None,
     show_legend: bool,
 ) -> None:
-    """Add the chosen measurement for each region and for Norway as a whole.
+    """Add the chosen measurement for selected regions and Norway as a whole.
 
     Capacity and stored energy can be added across regions, and are therefore
     shown as stacked areas. Fill levels and weekly changes are shown as lines,
@@ -86,12 +74,12 @@ def add_measurement_traces(
     settings = PLOT_SETTINGS[measurement]
 
     if area_type is not None:
-        # Keep only the selected regional system before drawing its areas.
+        # Drawing selected regions, using the same labels as the shared selector.
         regional_data = data.loc[data["area_type"] == area_type]
         for color_index, (area_number, area_data) in enumerate(
             regional_data.groupby("area_number", sort=True)
         ):
-            area_label = f"{area_type}-{area_number}"
+            area_label = f"NO{area_number}" if area_type == "EL" else f"VASS{area_number}"
             trace_arguments = {
                 "x": area_data["date"],
                 "y": area_data[measurement] * settings["multiplier"],
@@ -184,14 +172,10 @@ def build_chart(data, measurements: list[str], area_type: str | None) -> go.Figu
     return figure
 
 
-st.header("Interactive reservoir chart")
+st.header("Reservoir statistics")
 st.write(
-    "Choose one measurement or view all measurements. Norway (NO-0) is always "
-    "shown as a thick, solid black reference line."
-)
-st.caption(
-    "Capacity and stored energy are stacked for regional views. Fill levels and "
-    "weekly changes are shown as separate regional lines because they cannot be added."
+    "Choose a region in the sidebar and one or all measurements below. "
+    "Norway (NO-0) is shown as a thick, solid black reference line."
 )
 
 # The loader caches the NVE response for one hour; copy it before adding a column.
@@ -210,9 +194,6 @@ recent_month_range = (
     month_options[-1],
 )
 
-st.session_state.setdefault("show_el_areas", False)
-st.session_state.setdefault("show_vass_areas", False)
-
 # Keep every control above the chart, so it never moves with chart output.
 with st.container(border=True):
     st.subheader("Chart controls")
@@ -227,17 +208,11 @@ with st.container(border=True):
         key="selected_measurement",
     )
 
-    with st.container(horizontal=True):
-        show_el = st.toggle(
-            "Show electricity price areas (EL)",
-            key="show_el_areas",
-            on_change=turn_off_vass_when_el_is_enabled,
-        )
-        show_vass = st.toggle(
-            "Show watercourse areas (VASS)",
-            key="show_vass_areas",
-            on_change=turn_off_el_when_vass_is_enabled,
-        )
+    # Comparing regions within the selected area system, keeping EL and VASS separate.
+    compare_regions = st.toggle("Compare all regions", key="compare_regions",
+        help="Shows all five electricity price areas when a NO region is selected, or all three "
+             "watercourse areas when a VASS region is selected. Turn off to show only the selected region. "
+             "Norway remains a reference line; the region selected in the sidebar stays unchanged.")
 
     period_column, recent_years_column = st.columns([3, 1], vertical_alignment="bottom")
     with period_column:
@@ -258,12 +233,17 @@ with st.container(border=True):
     # A range slider always supplies a start and end month for filtering.
     start_month, end_month = selected_month_range
 
-# Apply both slider ends before building the chart; only these months are plotted.
+# Matching weather region labels to NVE's area type and number; keeping NO-0 as reference.
+selected_region = st.session_state["selected_region"]
+selected_area_type = "EL" if selected_region.startswith("NO") else "VASS"
+selected_area_number = int(selected_region[-1])
 selected_data = reservoir_data.loc[
     (reservoir_data["month"] >= start_month)
     & (reservoir_data["month"] <= end_month)
+    & (((reservoir_data["area_type"] == selected_area_type)
+        & (compare_regions | (reservoir_data["area_number"] == selected_area_number)))
+       | ((reservoir_data["area_type"] == "NO") & (reservoir_data["area_number"] == 0)))
 ].copy()
-selected_area_type = "EL" if show_el else "VASS" if show_vass else None
 # The same chart function accepts either one measurement or all of them.
 selected_measurements = (
     list(MEASUREMENT_COLUMNS)

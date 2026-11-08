@@ -4,6 +4,9 @@
 # Class assignments (kept locally, not sent to GitHub)
 Class Assignments/
 
+# Compulsory assignment test files
+/Compulsory Assignments/testfiles/
+
 # Course material (kept locally, not sent to GitHub)
 Curriculum/
 
@@ -16,6 +19,10 @@ AGENTS.md
 # Local credentials (configuration files can still be tracked)
 .streamlit/secrets.toml
 
+# Keeping downloaded weather checkpoints local; notebook code reproduces the requests.
+/Compulsory Assignments/data/weather/
+
 
 # Deliverables are PDFs and are submitted to Canvas, not GitHub
 deliverables/
+
