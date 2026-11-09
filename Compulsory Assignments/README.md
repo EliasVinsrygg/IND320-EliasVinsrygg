@@ -1,15 +1,16 @@
-# IND320 Compulsory Assignment 1
+# IND320 Compulsory Assignments 1–3
 
 - [Public GitHub repository](https://github.com/EliasVinsrygg/IND320-EliasVinsrygg)
 - [Published Streamlit app](https://ind320-eliasvinsrygg.streamlit.app/)
 
-An interactive exploration of weekly Norwegian reservoir statistics for the
-IND320 Data to Decision course.
+An interactive exploration of Norwegian reservoirs, regional weather and
+cross-border electricity flows for the IND320 Data to Decision course.
 
 ## Contents
 
-- A Jupyter Notebook for the analysis in `notebooks/reservoirs_analysis.ipynb`.
-- A four-page Streamlit app with data table and interactive Plotly charts.
+- Analysis notebooks in `notebooks/CA1.ipynb`, `CA2.ipynb` and `CA3.ipynb`.
+- A seven-page Streamlit app with dataset previews, charts, STL, spectrograms,
+  precipitation SPC and temperature LOF.
 - Regional electricity price-area (EL) and watercourse-area (VASS) views,
   alongside the national Norway (NO-0) reference series.
 
@@ -36,6 +37,7 @@ IND320/
     streamlit_app.py
     app_pages/
     modules/
+    assets/        # Fixed weather coordinates required by the app.
     notebooks/
     data/
 ```
@@ -63,5 +65,26 @@ Streamlit Community Cloud's secrets settings.
 
 ## Data
 
-The app reads the local `data/reservoirs.csv` dataset. It caches the source
-data and translates the supplied Norwegian column names for presentation.
+Reservoir data come directly from NVE and are cached for one hour. Country-pair
+flow records are read from `ind320_ca2.monthly_flows` in MongoDB. Hourly regional
+weather means are read from `ind320_ca3.weather_hourly` and cached for ten minutes.
+
+Weather analysis supports completed years from 1940 onwards. Missing data require
+confirmation in a dialog before an ERA5 request for 100 fixed points. Successful
+results are saved in MongoDB for other users. The connection needs read/write
+access to `ind320_ca3.weather_hourly` and `ind320_ca3.weather_download_control`.
+The latter stores only timestamps, counts and timing measurements; all rules
+and executable code are Python files in `modules/` and `app_pages/`.
+
+App download limits are shared: 90 seconds after an attempt, a one-hour pause
+after nine attempts within an hour, and at most 19 attempts in a rolling 24 hours.
+Failed API attempts also count. Local responses are reused after interrupted
+saves without another API call. HTTP 429 stops without automatic retries and
+sets a shared pause. Usage by notebooks or other tools is not automatically
+included in the app's counters; the external API can still reject requests.
+
+The dialog's initial processing estimate is one minute; later estimates use the
+last successful app download duration. These are estimates, not guaranteed times.
+The app uses `assets/weather_locations.json` and does not import notebooks or
+need shapefiles. Local raw-weather checkpoints under `data/weather/` are optional
+for the app and are excluded from Git.
