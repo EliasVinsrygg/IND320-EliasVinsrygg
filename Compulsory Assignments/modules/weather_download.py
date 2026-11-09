@@ -12,7 +12,7 @@ import requests
 from pymongo import UpdateOne
 from pymongo.errors import PyMongoError
 
-from modules.mongo_loader import get_mongo_client
+from modules.database import get_mongo_client
 from modules.weather_loader import WeatherDataMissing, load_weather_data
 
 

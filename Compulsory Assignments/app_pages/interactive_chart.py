@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 import streamlit as st
 from plotly.subplots import make_subplots
 
-from modules.data_loader import MEASUREMENT_COLUMNS, load_reservoir_data
+from modules.reservoir_loader import MEASUREMENT_COLUMNS, load_reservoir_data
 
 
 # Each measurement needs its own label, unit conversion, and plotting rule.

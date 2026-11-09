@@ -5,7 +5,7 @@ import pandas as pd
 import streamlit as st
 from pymongo.errors import PyMongoError
 
-from modules.mongo_loader import get_mongo_client
+from modules.database import get_mongo_client
 
 
 class WeatherDataMissing(ValueError):

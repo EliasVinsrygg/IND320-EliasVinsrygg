@@ -7,8 +7,8 @@ import pandas as pd
 import streamlit as st
 from pymongo.errors import PyMongoError
 
-from modules.data_loader import COLUMN_DESCRIPTIONS, MEASUREMENT_COLUMNS, load_reservoir_data
-from modules.mongo_loader import get_available_flows, get_monthly_flows
+from modules.reservoir_loader import COLUMN_DESCRIPTIONS, MEASUREMENT_COLUMNS, load_reservoir_data
+from modules.flow_loader import get_available_flows, get_monthly_flows
 from modules.weather_loader import load_weather_data
 
 

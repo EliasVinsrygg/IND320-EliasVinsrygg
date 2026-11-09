@@ -3,7 +3,7 @@
 import matplotlib.pyplot as plt
 import streamlit as st
 
-from modules.data_loader import load_reservoir_data
+from modules.reservoir_loader import load_reservoir_data
 from modules.reservoir_analysis import reservoir_spectrogram, reservoir_stl
 
 

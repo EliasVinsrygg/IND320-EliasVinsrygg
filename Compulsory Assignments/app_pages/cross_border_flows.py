@@ -6,7 +6,7 @@ import numpy as np
 import streamlit as st
 
 from modules.flow_plotting import build_energy_pie_chart, build_power_chart
-from modules.mongo_loader import get_available_flows, get_monthly_flows
+from modules.flow_loader import get_available_flows, get_monthly_flows
 
 
 st.header("Cross-border flows")
