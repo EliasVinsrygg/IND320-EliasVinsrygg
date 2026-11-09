@@ -22,3 +22,9 @@ AGENTS.md
 # Deliverables are PDFs and are submitted to Canvas, not GitHub
 deliverables/
 
+# Keeping the former coursework-specific rules scoped to Compulsory Assignments.
+/Compulsory Assignments/**/__pycache__/
+/Compulsory Assignments/**/venv/
+/Compulsory Assignments/**/.env
+/Compulsory Assignments/.streamlit/secrets.toml
+/Compulsory Assignments/**/*.pyc
