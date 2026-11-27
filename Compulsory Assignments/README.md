@@ -48,7 +48,7 @@ In **Analyse**, the weather tabs can show saved hourly data for the current year
 
 In **Forecast**, **Observation data → Update data** checks the four sources and appends complete weeks. The app records one completed check per window beginning Monday at 06:00 Oslo time in `ind320_ca4.refresh_status`. Its default forecast starts at the latest complete week available to the model.
 
-The Norwegian overlays are based on the project shapefiles. The six country overlays use [Natural Earth Vector v5.1.1](https://github.com/nvkelso/natural-earth-vector/blob/v5.1.1/geojson/ne_50m_admin_0_countries.geojson). The app reads the prepared GeoJSON files in `assets/`.
+The Norwegian overlays are based on the original boundaries in `assets/shapefiles/`. The six country overlays use [Natural Earth Vector v5.1.1](https://github.com/nvkelso/natural-earth-vector/blob/v5.1.1/geojson/ne_50m_admin_0_countries.geojson). The app reads the prepared GeoJSON files in `assets/`.
 
 ## Repository layout
 
@@ -68,7 +68,7 @@ uv run python "Compulsory Assignments/scripts/prepare_map_areas.py"
 
 | Script | Purpose |
 | --- | --- |
-| [prepare_map_areas.py](scripts/prepare_map_areas.py) | Rebuild the Norwegian area GeoJSON from `shapefiles/`. |
+| [prepare_map_areas.py](scripts/prepare_map_areas.py) | Rebuild the Norwegian area GeoJSON from `assets/shapefiles/`. |
 | [prepare_flow_countries.py](scripts/prepare_flow_countries.py) | Fetch the pinned Natural Earth source and rebuild the six country polygons. |
 | [seed_no3_history.py](scripts/seed_no3_history.py) | Seed the weekly NO3 history in MongoDB from the local CSV. |
 | [prepare_map_weather.py](scripts/prepare_map_weather.py) | Prepare the latest shared weather week for the map. |

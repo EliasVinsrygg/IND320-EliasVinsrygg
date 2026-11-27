@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def prepare_areas():
     """Return nine areas with the same type and number as the NVE observations."""
-    folder = ROOT / "shapefiles"
+    folder = ROOT / "assets/shapefiles"
     prices = gpd.read_file(folder / "Budområder/Budområder.shp", encoding="utf-8")
     water = gpd.read_file(folder / "NVE_Region/NVE_Region.shp", encoding="utf-8")
 
