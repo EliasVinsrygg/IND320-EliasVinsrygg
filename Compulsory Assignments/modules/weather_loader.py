@@ -13,8 +13,8 @@ class WeatherDataMissing(ValueError):
 
 
 @st.cache_data(ttl=600, max_entries=16)
-def load_weather_data(region: str, year: int) -> pd.DataFrame:
-    """Return one complete UTC year of 100-point regional means, or raise ValueError."""
+def load_weather_data(region: str, year: int, through_latest: bool = False) -> pd.DataFrame:
+    """Read continuous regional UTC hours from January 1 through year end or the latest stored hour."""
     # Reading only the selected region/year, using the app's existing shared client.
     hours = pd.date_range(f"{year}-01-01", f"{year + 1}-01-01",
                           freq="h", inclusive="left", tz="UTC")
@@ -38,6 +38,9 @@ def load_weather_data(region: str, year: int) -> pd.DataFrame:
     data = data.sort_values("time").reset_index(drop=True)
     if data["time"].duplicated().any():
         raise ValueError("Duplicate weather hours were found; check the saved dataset.")
+    # Allowing a partial final year while still requiring every hour from January 1.
+    if through_latest:
+        hours = hours[hours <= data["time"].iloc[-1]]
     if not pd.DatetimeIndex(data["time"]).equals(hours):
         raise WeatherDataMissing(f"Incomplete weather data for {region}/{year}: {len(data)} of {len(hours)} expected hours.")
 

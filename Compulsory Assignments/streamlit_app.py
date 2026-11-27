@@ -15,6 +15,7 @@ reservoir_pages = [
     st.Page("app_pages/interactive_chart.py", title="Reservoir statistics", icon=":material/analytics:"),
     st.Page("app_pages/reservoir_analysis.py", title="Reservoir analysis", icon=":material/water_drop:"),
     st.Page("app_pages/weather_analysis.py", title="Weather analysis", icon=":material/cloud:"),
+    st.Page("app_pages/weather_correlation.py", title="Weather and reservoir correlation", icon=":material/show_chart:"),
     forecast_page,
 ]
 navigation = {
@@ -22,7 +23,7 @@ navigation = {
         st.Page("app_pages/front_page.py", title="Front Page", icon=":material/home:"),
         st.Page("app_pages/data_table.py", title="Data table", icon=":material/table_chart:"),
     ],
-    "Reservoir": reservoir_pages,
+    "Reservoir": [st.Page("app_pages/reservoir_map.py", title="Reservoir map", icon=":material/map:"), *reservoir_pages],
     "Country statistics": [
         st.Page("app_pages/cross_border_flows.py", title="Cross-border flows", icon=":material/swap_horiz:"),
     ],
@@ -40,7 +41,7 @@ for group, pages in navigation.items():
         st.sidebar.selectbox(
             "Region", ["NO1", "NO2", "NO3", "NO4", "NO5", "VASS1", "VASS2", "VASS3"],
             index=2, key="selected_region", persist_state="session",
-            help="Chooses the region used by Reservoir statistics, Reservoir analysis and Weather analysis. "
+            help="Chooses the region used by Reservoir statistics, Reservoir analysis, Weather analysis and correlation. "
                  "NO1–NO5 are electricity price areas; VASS1–VASS3 are watercourse areas.",
         )
     for page in pages:
