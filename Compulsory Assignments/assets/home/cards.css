@@ -1,0 +1,31 @@
+/* Using the card as the containing block for the native navigation link. */
+[class*="st-key-home_card_"] {
+    position: relative;
+    background-color: #f7fcff;
+    transition: background-color 150ms ease, box-shadow 150ms ease;
+}
+
+[class*="st-key-home_card_"] [data-testid="stElementContainer"]:has([data-testid="stPageLink-NavLink"]),
+[class*="st-key-home_card_"] [data-testid="stPageLink"],
+[class*="st-key-home_card_"] [data-testid="stPageLink-NavLink"] {
+    position: static;
+}
+
+/* Covering the preview, label and padding while keeping one keyboard focus target. */
+[class*="st-key-home_card_"] [data-testid="stPageLink-NavLink"]::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    cursor: pointer;
+}
+
+[class*="st-key-home_card_"]:hover {
+    background-color: #dfeff9;
+    box-shadow: 0 3px 12px #15324720;
+}
+
+[class*="st-key-home_card_"]:focus-within {
+    outline: 2px solid #1a6089;
+    outline-offset: 2px;
+}

@@ -1,5 +1,12 @@
-# Local Python environment
+# Local Python environments and caches
 .venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
 
 # Class assignments (kept locally, not sent to GitHub)
 Class Assignments/
@@ -16,18 +23,25 @@ Peer_reviews/
 # Local agent instructions
 AGENTS.md
 
-# Local credentials (configuration files can still be tracked)
-.streamlit/secrets.toml
+# Local credentials (shared config and examples can still be tracked)
+**/.streamlit/secrets.toml
+.env
+.env.*
+!.env.example
 
 # Deliverables are PDFs and are submitted to Canvas, not GitHub
+Deliverables/
 deliverables/
 
-# Temporary files
+# Temporary files and the source image embedded in the CA4 notebook
 tmp/
+*.tmp
+.tmp_*
+/Design sketch.jpeg
 
-# Keeping the former coursework-specific rules scoped to Compulsory Assignments.
-/Compulsory Assignments/**/__pycache__/
-/Compulsory Assignments/**/venv/
-/Compulsory Assignments/**/.env
-/Compulsory Assignments/.streamlit/secrets.toml
-/Compulsory Assignments/**/*.pyc
+# Local weather downloads and derived cache files
+/Compulsory Assignments/data/weather/
+
+# Keeping large CA4 download checkpoints local and retaining the data manifest.
+/Compulsory Assignments/data/ca4/2016_2025/entsoe/
+/Compulsory Assignments/data/ca4/2016_2025/weather/NO3_20??.json

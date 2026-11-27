@@ -25,12 +25,12 @@ HOURLY_DOWNLOADS = 9
 DAILY_DOWNLOADS = 19
 
 
-def weather_request(region, year):
-    """Building one annual request using the exact sample already used for the app."""
+def weather_sample(region):
+    """Build ERA5 parameters and the sample identifier for a regional request."""
     # Loading fixed coordinates from the repo, independently of notebooks and shapefiles.
     samples = json.loads((APP_FOLDER / "assets/weather_locations.json").read_text(encoding="utf-8"))
-    if region not in samples["regions"] or not 1940 <= year < pd.Timestamp.now(tz="UTC").year:
-        raise ValueError("Choose a known region and a completed year from 1940 onwards.")
+    if region not in samples["regions"]:
+        raise ValueError("Choose a known weather region.")
     locations = np.asarray(samples["regions"][region], dtype=float)
     if locations.shape != (100, 2) or not np.isfinite(locations).all() or (np.abs(locations) > [180, 90]).any():
         raise ValueError("The fixed weather sample must contain 100 valid longitude/latitude pairs.")
@@ -39,6 +39,14 @@ def weather_request(region, year):
               "hourly": ",".join(VARIABLES), "models": "era5", "timezone": "GMT",
               "temperature_unit": "celsius", "precipitation_unit": "mm"}
     sample_id = hashlib.sha256(json.dumps(params, sort_keys=True).encode()).hexdigest()
+    return params, sample_id
+
+
+def weather_request(region, year):
+    """Build a complete-year request using the shared regional weather sample."""
+    if not 1940 <= year < pd.Timestamp.now(tz="UTC").year:
+        raise ValueError("Choose a completed year from 1940 onwards.")
+    params, sample_id = weather_sample(region)
     params.update(start_date=f"{year}-01-01", end_date=f"{year}-12-31")
     key = hashlib.sha256(json.dumps(params, sort_keys=True).encode()).hexdigest()
     hours = pd.date_range(f"{year}-01-01", f"{year + 1}-01-01", freq="h", inclusive="left", tz="UTC")
@@ -83,6 +91,20 @@ def mean_weather(payload, hours):
             raise ValueError("Open-Meteo returned missing or non-finite values.")
         frames.append(frame)
     return pd.concat(frames, ignore_index=True).groupby("time")[VARIABLES].mean()
+
+
+def save_hourly_means(region, sample_id, means):
+    """Upsert validated regional hours using the shared CA3 document IDs."""
+    collection = get_mongo_client()["ind320_ca3"]["weather_hourly"]
+    writes = []
+    for hour, row in means.iterrows():
+        document = {"region": region, "time": hour.to_pydatetime(),
+                    "temperature_2m": float(row["temperature_2m"]), "precipitation": float(row["precipitation"]),
+                    "sample_id": sample_id, "sample_size": 100, "sample_seed": 42,
+                    "model": "era5", "timezone": "UTC", "units": UNITS, "source": API_URL}
+        key = f"{region}:{sample_id}:{hour.isoformat()}"
+        writes.append(UpdateOne({"_id": key}, {"$set": document}, upsert=True))
+    collection.bulk_write(writes, ordered=False)
 
 
 def download_weather(region, year, progress=None):
@@ -153,16 +175,7 @@ def download_weather(region, year, progress=None):
         # Upserting the same hourly schema and IDs as the notebook, allowing safe recovery after interruption.
         if progress:
             progress("Saving hourly means to MongoDB for all users.")
-        collection = get_mongo_client()["ind320_ca3"]["weather_hourly"]
-        writes = []
-        for hour, row in means.iterrows():
-            document = {"region": region, "time": hour.to_pydatetime(),
-                        "temperature_2m": float(row["temperature_2m"]), "precipitation": float(row["precipitation"]),
-                        "sample_id": settings["sample_id"], "sample_size": 100, "sample_seed": 42,
-                        "model": "era5", "timezone": "UTC", "units": UNITS, "source": API_URL}
-            key = f"{region}:{settings['sample_id']}:{hour.isoformat()}"
-            writes.append(UpdateOne({"_id": key}, {"$set": document}, upsert=True))
-        collection.bulk_write(writes, ordered=False)
+        save_hourly_means(region, settings["sample_id"], means)
         load_weather_data.clear(region, year)
         weather = load_weather_data(region, year)
         succeeded = True

@@ -1,1 +1,18 @@
 # Shared Streamlit configuration. Run the app from the repository root.
+
+[theme]
+base = "light"
+primaryColor = "#1A6089"
+backgroundColor = "#EDF7FD"
+secondaryBackgroundColor = "#DDEEF8"
+textColor = "#153247"
+linkColor = "#14587D"
+borderColor = "#ACC8D9"
+baseRadius = "0.5rem"
+showWidgetBorder = true
+showSidebarBorder = true
+chartCategoricalColors = ["#216B9B", "#24796F", "#914F2C", "#67569A", "#A53E43", "#576F80"]
+
+[theme.sidebar]
+backgroundColor = "#DDEEF8"
+secondaryBackgroundColor = "#EDF7FD"
