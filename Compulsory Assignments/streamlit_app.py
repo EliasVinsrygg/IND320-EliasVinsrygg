@@ -9,11 +9,13 @@ st.set_page_config(
     page_icon=":material/water_drop:",
 )
 
-# Grouping the pages that share a region, separately from country-level statistics.
+# Retaining the current groups while adding the NO3-only forecast page.
+forecast_page = st.Page("app_pages/forecast.py", title="NO3 forecast", icon=":material/trending_up:")
 reservoir_pages = [
     st.Page("app_pages/interactive_chart.py", title="Reservoir statistics", icon=":material/analytics:"),
     st.Page("app_pages/reservoir_analysis.py", title="Reservoir analysis", icon=":material/water_drop:"),
     st.Page("app_pages/weather_analysis.py", title="Weather analysis", icon=":material/cloud:"),
+    forecast_page,
 ]
 navigation = {
     "": [
@@ -34,7 +36,7 @@ selected_page = st.navigation(navigation, position="hidden")
 for group, pages in navigation.items():
     if group:
         st.sidebar.markdown(f"**{group}**")
-    if group == "Reservoir" and selected_page in reservoir_pages:
+    if group == "Reservoir" and selected_page in reservoir_pages and selected_page != forecast_page:
         st.sidebar.selectbox(
             "Region", ["NO1", "NO2", "NO3", "NO4", "NO5", "VASS1", "VASS2", "VASS3"],
             index=2, key="selected_region", persist_state="session",
