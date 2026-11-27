@@ -17,10 +17,10 @@ st.html(assets / "cards.css")
 views = (
     ("Explore", "reservoir_map", "explore.png", ":material/map:",
      "Compare reservoir levels and electricity flows on the map."),
-    ("Analyse", "analyse", "analyse.png", ":material/analytics:",
-     "Investigate seasonal patterns and unusual weather."),
-    ("Forecast", "forecast", "forecast.png", ":material/trending_up:",
-     "See the weekly outlook for reservoir filling in NO3."),
+    ("Analyse", "analyse", "analyse.png", ":material/analytics:       ",
+     "Investigate seasonal patterns and unusual weather in the data."),
+    ("Forecast", "forecast", "forecast.png", ":material/trending_up:       ",
+     "See the weekly outlook for reservoir filling in NO3, predicted based on different inputs."),
 )
 for column, (label, page, preview, icon, description) in zip(st.columns(3, gap="medium"), views):
     with column.container(border=True, key=f"home_card_{page}"):
