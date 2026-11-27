@@ -20,21 +20,7 @@ COLUMN_NAMES = {
     "endring_fyllingsgrad": "weekly_fill_level_change",
 }
 
-COLUMN_DESCRIPTIONS = {
-    "date": "Observation date",
-    "area_type": "Geographical aggregation type",
-    "area_number": "Area identifier",
-    "iso_year": "ISO calendar year",
-    "iso_week": "ISO calendar week number",
-    "fill_level_ratio": "Reservoir fill level (ratio)",
-    "capacity_twh": "Reservoir capacity (TWh)",
-    "stored_energy_twh": "Stored energy (TWh)",
-    "next_publication_date": "Next planned publication date",
-    "previous_week_fill_level_ratio": "Previous-week fill level (ratio)",
-    "weekly_fill_level_change": "Weekly fill-level change (ratio)",
-}
-
-# Only these columns describe measured quantities suitable for line sparklines.
+# Listing the measurements available in the reservoir detail charts.
 MEASUREMENT_COLUMNS = (
     "fill_level_ratio",
     "capacity_twh",
@@ -46,6 +32,7 @@ MEASUREMENT_COLUMNS = (
 API_URL = (
     "https://biapi.nve.no/magasinstatistikk/api/Magasinstatistikk/HentOffentligData"
 )
+
 
 @st.cache_data(ttl="1h")
 def load_reservoir_data() -> pd.DataFrame:
@@ -74,41 +61,3 @@ def load_reservoir_data() -> pd.DataFrame:
     return data.sort_values(
         ["date", "area_type", "area_number"]
     ).reset_index(drop=True)
-
-
-def build_column_summary(data: pd.DataFrame) -> tuple[pd.DataFrame, pd.Period]:
-    """Describe each column and add a small trend from NO-0's first month."""
-    # NO-0 is the national series; regional area systems would mix different places.
-    national_data = data.loc[
-        (data["area_type"] == "NO") & (data["area_number"] == 0)
-    ].copy()
-
-    if national_data.empty:
-        raise ValueError("The national reservoir series (NO-0) is missing from the data.")
-
-    # Use one calendar month so all measurement sparklines cover the same dates.
-    first_month = national_data["date"].min().to_period("M")
-    first_month_data = national_data.loc[
-        national_data["date"].dt.to_period("M") == first_month
-    ]
-
-    summary_rows = []
-    for column in data.columns:
-        # A sparkline needs a list of numbers; metadata has no numeric trend.
-        if column in MEASUREMENT_COLUMNS:
-            sparkline_values = first_month_data[column].astype(float).tolist()
-            chart_note = "First-month measurement series"
-        else:
-            sparkline_values = []
-            chart_note = "Metadata: no numeric measurement series"
-
-        summary_rows.append(
-            {
-                "Column": column,
-                "Description": COLUMN_DESCRIPTIONS[column],
-                "First month series": sparkline_values,
-                "Chart note": chart_note,
-            }
-        )
-
-    return pd.DataFrame(summary_rows), first_month

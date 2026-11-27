@@ -1,9 +1,14 @@
 """Copy the prepared CA4 history to MongoDB and verify the round trip."""
 
 from pathlib import Path
+import sys
 
 import pandas as pd
 from pymongo import UpdateOne
+
+# Resolving the shared data and app modules from the parent of scripts/.
+APP_FOLDER = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(APP_FOLDER))
 
 from modules.database import get_mongo_client
 from modules.forecasting import EXOGENOUS_LABELS, forecast_no3
@@ -11,7 +16,7 @@ from modules.forecasting import EXOGENOUS_LABELS, forecast_no3
 
 def seed_history():
     """Insert missing historical weeks and check the weekly values and default forecast."""
-    path = Path(__file__).parent / "data/ca4/no3_weekly.csv"
+    path = APP_FOLDER / "data/ca4/no3_weekly.csv"
     data = pd.read_csv(path, parse_dates=["date"], index_col="date")
     expected = pd.date_range("2016-01-10", "2025-12-28", freq="W-SUN")
     assert data.index.equals(expected) and list(data) == ["filling_percent", *EXOGENOUS_LABELS]

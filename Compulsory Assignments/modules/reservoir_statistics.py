@@ -1,11 +1,10 @@
-
 """Reservoir statistics page with an interactive Plotly chart."""
 
 import plotly.graph_objects as go
 import streamlit as st
 from plotly.subplots import make_subplots
 
-from modules.reservoir_loader import MEASUREMENT_COLUMNS, load_reservoir_data
+from modules.reservoir_loader import MEASUREMENT_COLUMNS
 
 
 # Each measurement needs its own label, unit conversion, and plotting rule.
@@ -172,103 +171,99 @@ def build_chart(data, measurements: list[str], area_type: str | None) -> go.Figu
     return figure
 
 
-st.header("Reservoir statistics")
-st.write(
-    "Choose a region in the sidebar and one or all measurements below. "
-    "Norway (NO-0) is shown as a thick, solid black reference line."
-)
+def show_reservoir_statistics(data, selected_region):
+    """Display the shared measurement and period controls for the selected NVE area."""
+    st.header(f"Reservoir statistics ({selected_region})")
+    st.caption("Norway (NO-0) is shown as a national reference.")
+    reservoir_data = data.copy()
+    # Month labels make the two ends of the period control easy to compare.
+    reservoir_data["month"] = reservoir_data["date"].dt.to_period("M").astype(str)
+    national_data = reservoir_data.loc[
+        (reservoir_data["area_type"] == "NO")
+        & (reservoir_data["area_number"] == 0)
+    ].copy()
+    month_options = national_data["month"].drop_duplicates().tolist()
 
-# The loader caches the NVE response for one hour; copy it before adding a column.
-reservoir_data = load_reservoir_data().copy()
-# Month labels make the two ends of the period control easy to compare.
-reservoir_data["month"] = reservoir_data["date"].dt.to_period("M").astype(str)
-national_data = reservoir_data.loc[
-    (reservoir_data["area_type"] == "NO")
-    & (reservoir_data["area_number"] == 0)
-].copy()
-month_options = national_data["month"].drop_duplicates().tolist()
-
-# Start with the same recent 36 months offered by the button below.
-recent_month_range = (
-    month_options[max(0, len(month_options) - 36)],
-    month_options[-1],
-)
-
-# Keep every control above the chart, so it never moves with chart output.
-with st.container(border=True):
-    st.subheader("Chart controls")
-    selected_measurement = st.selectbox(
-        "Choose a measurement",
-        options=[ALL_MEASUREMENTS, *MEASUREMENT_COLUMNS],
-        format_func=lambda option: (
-            "All measurement columns"
-            if option == ALL_MEASUREMENTS
-            else PLOT_SETTINGS[option]["label"]
-        ),
-        key="selected_measurement",
+    # Start with the same recent 36 months offered by the button below.
+    recent_month_range = (
+        month_options[max(0, len(month_options) - 36)],
+        month_options[-1],
     )
 
-    # Comparing regions within the selected area system, keeping EL and VASS separate.
-    compare_regions = st.toggle("Compare all regions", key="compare_regions",
-        help="Shows all five electricity price areas when a NO region is selected, or all three "
-             "watercourse areas when a VASS region is selected. Turn off to show only the selected region. "
-             "Norway remains a reference line; the region selected in the sidebar stays unchanged.")
-
-    period_column, recent_years_column = st.columns([3, 1], vertical_alignment="bottom")
-    with period_column:
-        selected_month_range = st.select_slider(
-            "Choose a period of months",
-            options=month_options,
-            # A two-value default makes this a range slider on every rerun.
-            value=recent_month_range,
-            key="chart_month_range",
+    # Keep every control above the chart, so it never moves with chart output.
+    with st.container(border=True):
+        st.subheader("Chart controls")
+        selected_measurement = st.selectbox(
+            "Choose a measurement",
+            options=[ALL_MEASUREMENTS, *MEASUREMENT_COLUMNS],
+            format_func=lambda option: (
+                "All measurement columns"
+                if option == ALL_MEASUREMENTS
+                else PLOT_SETTINGS[option]["label"]
+            ),
+            key="selected_measurement",
         )
-    with recent_years_column:
-        st.button(
-            "Show recent years",
-            key="change_to_recent_data",
-            on_click=set_recent_month_range,
-            args=(recent_month_range,),
-        )
-    # A range slider always supplies a start and end month for filtering.
-    start_month, end_month = selected_month_range
 
-# Matching weather region labels to NVE's area type and number; keeping NO-0 as reference.
-selected_region = st.session_state["selected_region"]
-selected_area_type = "EL" if selected_region.startswith("NO") else "VASS"
-selected_area_number = int(selected_region[-1])
-selected_data = reservoir_data.loc[
-    (reservoir_data["month"] >= start_month)
-    & (reservoir_data["month"] <= end_month)
-    & (((reservoir_data["area_type"] == selected_area_type)
-        & (compare_regions | (reservoir_data["area_number"] == selected_area_number)))
-       | ((reservoir_data["area_type"] == "NO") & (reservoir_data["area_number"] == 0)))
-].copy()
-# The same chart function accepts either one measurement or all of them.
-selected_measurements = (
-    list(MEASUREMENT_COLUMNS)
-    if selected_measurement == ALL_MEASUREMENTS
-    else [selected_measurement]
-)
+        # Comparing regions within the selected area system, keeping EL and VASS separate.
+        compare_regions = st.toggle("Compare all regions", key="compare_regions", disabled=selected_region == "NO-0",
+            help="Shows all five electricity price areas when a NO region is selected, or all three "
+                 "watercourse areas when a VASS region is selected. Turn off to show only the selected region. "
+                 "Norway remains a reference line; the selected region stays unchanged.")
 
-st.caption(
-    "Hover to inspect values. Use the mouse wheel or the toolbar to zoom, drag "
-    "to pan, and use point, box or lasso selection in the toolbar to select data."
-)
+        period_column, recent_years_column = st.columns([3, 1], vertical_alignment="bottom")
+        with period_column:
+            selected_month_range = st.select_slider(
+                "Choose a period of months",
+                options=month_options,
+                # A two-value default makes this a range slider on every rerun.
+                value=recent_month_range,
+                key="chart_month_range",
+            )
+        with recent_years_column:
+            st.button(
+                "Show recent years",
+                key="change_to_recent_data",
+                on_click=set_recent_month_range,
+                args=(recent_month_range,),
+            )
+        # A range slider always supplies a start and end month for filtering.
+        start_month, end_month = selected_month_range
 
-selection_event = st.plotly_chart(
-    build_chart(selected_data, selected_measurements, selected_area_type),
-    width="stretch",
-    key="reservoir_plot",
-    on_select="rerun",
-    selection_mode=("points", "box", "lasso"),
-    config={"scrollZoom": True, "displaylogo": False},
-)
+    # Matching weather region labels to NVE's area type and number; keeping NO-0 as reference.
+    selected_area_type = None if selected_region == "NO-0" else ("EL" if selected_region.startswith("NO") else "VASS")
+    selected_area_number = int(selected_region[-1])
+    selected_data = reservoir_data.loc[
+        (reservoir_data["month"] >= start_month)
+        & (reservoir_data["month"] <= end_month)
+        & (((reservoir_data["area_type"] == selected_area_type)
+            & (compare_regions | (reservoir_data["area_number"] == selected_area_number)))
+           | ((reservoir_data["area_type"] == "NO") & (reservoir_data["area_number"] == 0)))
+    ].copy()
+    # The same chart function accepts either one measurement or all of them.
+    selected_measurements = (
+        list(MEASUREMENT_COLUMNS)
+        if selected_measurement == ALL_MEASUREMENTS
+        else [selected_measurement]
+    )
 
-# Report chart selections without changing the data shown in the plot.
-selected_points = selection_event.selection.points
-if selected_points:
     st.caption(
-        f"You selected {len(selected_points)} data point(s). Double-click the chart "
-        "to clear the selection."
+        "Hover to inspect values. Use the mouse wheel or the toolbar to zoom, drag "
+        "to pan, and use point, box or lasso selection in the toolbar to select data."
     )
+
+    selection_event = st.plotly_chart(
+        build_chart(selected_data, selected_measurements, selected_area_type),
+        width="stretch",
+        key="reservoir_plot",
+        on_select="rerun",
+        selection_mode=("points", "box", "lasso"),
+        config={"scrollZoom": True, "displaylogo": False},
+    )
+
+    # Report chart selections without changing the data shown in the plot.
+    selected_points = selection_event.selection.points
+    if selected_points:
+        st.caption(
+            f"You selected {len(selected_points)} data point(s). Double-click the chart "
+            "to clear the selection."
+        )

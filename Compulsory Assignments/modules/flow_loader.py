@@ -7,15 +7,21 @@ from modules.database import get_mongo_client
 
 DATABASE = "ind320_ca2"
 COLLECTION = "monthly_flows"
+# Using the same calendar years in the Explore map and the flow controls.
+FLOW_VIEW_YEARS = (2024, 2025)
 
 
 @st.cache_data(ttl=600)
-def get_available_flows() -> list[tuple[str, int]]:
-    """List saved country-year pairs for the page controls; refresh every 10 minutes."""
+def get_flow_years_by_country() -> dict[str, list[int]]:
+    """List the available years for each map connection, newest first."""
     collection = get_mongo_client()[DATABASE][COLLECTION]
-    # Read only the small fields needed to build the page's controls.
-    documents = collection.find({}, {"_id": 0, "country": 1, "year": 1})
-    return sorted({(item["country"], item["year"]) for item in documents})
+    # Fetching only supported calendar years and deduplicating the monthly records.
+    documents = collection.find({"year": {"$in": list(FLOW_VIEW_YEARS)}},
+                                {"_id": 0, "country": 1, "year": 1})
+    years_by_country: dict[str, set[int]] = {}
+    for row in documents:
+        years_by_country.setdefault(row["country"], set()).add(row["year"])
+    return {country: sorted(years, reverse=True) for country, years in years_by_country.items()}
 
 
 @st.cache_data(ttl=600, max_entries=20)

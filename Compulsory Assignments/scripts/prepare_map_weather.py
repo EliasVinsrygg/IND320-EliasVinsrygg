@@ -1,8 +1,13 @@
 ﻿"""Prepare the most recent common map week from the CA4 forecast data."""
 import math
+from pathlib import Path
+import sys
 import time
 
 import pandas as pd
+
+# Resolving the app modules without changing the working directory for Streamlit secrets.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from modules.database import get_mongo_client
 from modules.forecast_update import fetch

@@ -37,7 +37,7 @@ def build_forecast_figure(history, forecast, coverage=0.8, reference=None):
     visible_start = max(history.index[0], origin - pd.DateOffset(years=2))
     axis_end = forecast.index[-1] + pd.Timedelta(days=7)
     figure.update_layout(
-        height=540, template="plotly_white", hovermode="x unified",
+        height=540, hovermode="x unified",
         margin={"t": 30, "b": 80}, yaxis={"title": "Fill level (%)", "range": [0, 100]},
         xaxis={"title": "Week ending", "range": [visible_start, axis_end],
                "rangeslider": {"visible": True, "thickness": 0.08, "range": [history.index[0], axis_end]}},

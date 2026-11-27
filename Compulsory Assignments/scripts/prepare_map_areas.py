@@ -7,7 +7,7 @@ import geopandas as gpd
 import pandas as pd
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def prepare_areas():

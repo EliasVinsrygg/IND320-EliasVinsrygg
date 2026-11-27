@@ -1,4 +1,4 @@
-"""Showing precipitation SPC and temperature LOF for saved regional weather."""
+"""Reuse the weather controls, charts and download confirmation across analysis views."""
 
 from datetime import date
 import math
@@ -65,65 +65,70 @@ def confirm_weather_download(region, year):
         st.rerun()
 
 
-st.header("Weather analysis")
-region = st.session_state["selected_region"]
-year = st.selectbox("Year", range(1940, date.today().year + 1), index=2024 - 1940,
-    help="The current year shows the continuous hourly observations saved so far.")
-through_latest = year == date.today().year
+def weather_for_view(region):
+    """Show the year control and load the saved hourly weather for this region."""
+    year = st.selectbox("Year", range(1940, date.today().year + 1), index=2024 - 1940,
+        key="weather_year", persist_state="page",
+        help="The current year shows the continuous hourly observations saved so far.")
+    through_latest = year == date.today().year
 
-# Opening a missing-data prompt once per selection; cancellation leaves a manual request button.
-if st.session_state.get("weather_selection") != (region, year):
-    st.session_state["weather_selection"] = (region, year)
-    st.session_state["weather_prompted"] = False
-    st.session_state["weather_dialog_open"] = False
+    # Opening a missing-data prompt once per selection; cancellation leaves a manual request button.
+    if st.session_state.get("weather_selection") != (region, year):
+        st.session_state["weather_selection"] = (region, year)
+        st.session_state["weather_prompted"] = False
+        st.session_state["weather_dialog_open"] = False
 
-# Reading saved means only; refreshing never starts a weather download.
-if st.button("Refresh saved data", help="Checks MongoDB again for completed data. No weather data are downloaded."):
-    load_weather_data.clear(region, year, through_latest)
-try:
-    weather = load_weather_data(region, year, through_latest)
-except WeatherDataMissing as error:
-    st.info(str(error))
-    if through_latest:
-        st.stop()
-    request_download = st.button("Request missing weather data")
-    if request_download or not st.session_state["weather_prompted"]:
-        st.session_state["weather_prompted"] = True
-        st.session_state["weather_dialog_open"] = True
-    if st.session_state["weather_dialog_open"]:
-        confirm_weather_download(region, year)
-    st.stop()
-except ValueError as error:
-    st.warning(str(error))
-    st.stop()
-st.caption(f"{region} · ERA5 · {weather.time.min():%d %b %Y} to {weather.time.max():%d %b %Y} · "
-           f"{len(weather)} UTC hours · means of 100 sampled points.")
+    # Reading saved means only; refreshing never starts a weather download.
+    if st.button("Refresh saved data", help="Checks MongoDB again for completed data. No weather data are downloaded."):
+        load_weather_data.clear(region, year, through_latest)
+    try:
+        weather = load_weather_data(region, year, through_latest)
+    except WeatherDataMissing as error:
+        st.info(str(error))
+        if through_latest:
+            return None
+        request_download = st.button("Request missing weather data")
+        if request_download or not st.session_state["weather_prompted"]:
+            st.session_state["weather_prompted"] = True
+            st.session_state["weather_dialog_open"] = True
+        if st.session_state["weather_dialog_open"]:
+            confirm_weather_download(region, year)
+        return None
+    except ValueError as error:
+        st.warning(str(error))
+        return None
+    st.caption(f"{region} · ERA5 · {weather.time.min():%d %b %Y} to {weather.time.max():%d %b %Y} · "
+               f"{len(weather)} UTC hours · means of 100 sampled points.")
+    return weather
 
-# Comparing both hourly series on one timeline, using separate axes for their different units.
-overview = make_subplots(specs=[[{"secondary_y": True}]])
-overview.add_trace(go.Scatter(x=weather["time"], y=weather["temperature_2m"],
-    name="Temperature", line={"color": "#d95f02", "width": 1}), secondary_y=False)
-overview.add_trace(go.Scatter(x=weather["time"], y=weather["precipitation"],
-    name="Precipitation", line={"color": "#1f77b4", "width": 1}), secondary_y=True)
-overview.update_yaxes(title_text="Temperature (°C)", secondary_y=False)
-overview.update_yaxes(title_text="Precipitation (mm/hour)", rangemode="tozero", secondary_y=True)
-overview.update_layout(xaxis_title="Time (UTC)", hovermode="x unified", height=350,
-                       legend={"orientation": "h"}, margin={"t": 20})
-st.plotly_chart(overview, width="stretch")
-st.caption("Temperature uses the left axis; precipitation uses the right axis.")
-st.caption("Highlighted observations are statistical flags, not confirmed data errors.")
 
-# Sharing the same complete regional series between both analyses.
-spc_tab, lof_tab = st.tabs(["SATV / SPC", "Local Outlier Factor"])
-with spc_tab:
-    spc_variable = st.selectbox("Weather property", list(WEATHER_PROPERTIES), key="spc_property",
+def show_weather_overview(weather):
+    """Show the two hourly weather series for the selected year."""
+    # Comparing both hourly series on one timeline, using separate axes for their different units.
+    overview = make_subplots(specs=[[{"secondary_y": True}]])
+    overview.add_trace(go.Scatter(x=weather["time"], y=weather["temperature_2m"],
+        name="Temperature", line={"color": "#d95f02", "width": 1}), secondary_y=False)
+    overview.add_trace(go.Scatter(x=weather["time"], y=weather["precipitation"],
+        name="Precipitation", line={"color": "#1f77b4", "width": 1}), secondary_y=True)
+    overview.update_yaxes(title_text="Temperature (°C)", secondary_y=False)
+    overview.update_yaxes(title_text="Precipitation (mm/hour)", rangemode="tozero", secondary_y=True)
+    overview.update_layout(xaxis_title="Time (UTC)", hovermode="x unified", height=350,
+                           legend={"orientation": "h"}, margin={"t": 20})
+    st.plotly_chart(overview, width="stretch")
+    st.caption("Temperature uses the left axis; precipitation uses the right axis.")
+    st.caption("Highlighted observations are statistical flags, not confirmed data errors.")
+
+
+def show_weather_satv(weather):
+    """Show the selected property with its SATV-based SPC limits."""
+    spc_variable = st.selectbox("Weather property", list(WEATHER_PROPERTIES), key="spc_property", persist_state="page",
                                 format_func=lambda key: WEATHER_PROPERTIES[key][0])
     # Expressing the filter boundary as a period in days for a more intuitive control.
-    period_days = st.number_input("Period cutoff (days)", min_value=1, value=30, step=1,
+    period_days = st.number_input("Period cutoff (days)", min_value=1, value=30, step=1, key="spc_period_days", persist_state="page",
         help="With 30 days, variations with periods longer than about 30 days are removed before "
              "checking for unusual hourly values. Lower values focus on faster changes; higher values "
              "also retain slower variations in the signal used to detect outliers.")
-    n_std = st.number_input("SPC limit width", min_value=0.1, value=3.0, step=0.5,
+    n_std = st.number_input("SPC limit width", min_value=0.1, value=3.0, step=0.5, key="spc_limit_width", persist_state="page",
         help="Sets how many robust standard deviations the limits extend above and below the baseline. "
              "Higher values give wider limits and flag fewer hours; lower values flag more.")
     # Converting days to cycles/day, then showing the selected observations and shifted limits.
@@ -140,11 +145,13 @@ with spc_tab:
     except ValueError as error:
         st.warning(str(error))
 
-with lof_tab:
-    lof_variable = st.selectbox("Weather property", list(WEATHER_PROPERTIES), key="lof_property",
+
+def show_weather_lof(weather):
+    """Show the selected property with the hours flagged by LOF."""
+    lof_variable = st.selectbox("Weather property", list(WEATHER_PROPERTIES), key="lof_property", persist_state="page",
                                 format_func=lambda key: WEATHER_PROPERTIES[key][0])
     anomaly_percent = st.number_input("Expected anomalies (%)", min_value=0.1, max_value=50.0,
-        value=1.0, step=0.1,
+        value=1.0, step=0.1, key="lof_anomaly_percent", persist_state="page",
         help="The percentage of hours the method aims to flag as unusual. The default 1% means about "
              "one in every 100 hours. Increasing it generally flags more hours; it is not the probability "
              "that a measurement is wrong.")

@@ -1,10 +1,15 @@
 ﻿"""Backfill missing 2026 map weeks for the four price areas outside NO3."""
 import argparse
+from pathlib import Path
+import sys
 import time
 
 import numpy as np
 import pandas as pd
 from pymongo import UpdateOne
+
+# Resolving the app modules when this script is run directly from the repository root.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from modules.database import get_mongo_client
 from modules.forecast_update import fetch

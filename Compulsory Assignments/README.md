@@ -1,90 +1,77 @@
-# IND320 Compulsory Assignments 1–3
+# IND320 Energy and Weather
 
-- [Public GitHub repository](https://github.com/EliasVinsrygg/IND320-EliasVinsrygg)
-- [Published Streamlit app](https://ind320-eliasvinsrygg.streamlit.app/)
+A Streamlit app and four coursework notebooks for the IND320 Data to Decision course. The app explores Norwegian reservoir filling, regional weather and cross-border electricity flows.
 
-An interactive exploration of Norwegian reservoirs, regional weather and
-cross-border electricity flows for the IND320 Data to Decision course.
+[GitHub repository](https://github.com/EliasVinsrygg/IND320-EliasVinsrygg) · [Hosted Streamlit app](https://ind320-eliasvinsrygg.streamlit.app/)
 
-## Contents
+## App pages
 
-- Analysis notebooks in `notebooks/CA1.ipynb`, `CA2.ipynb` and `CA3.ipynb`.
-- A seven-page Streamlit app with dataset previews, charts, STL, spectrograms,
-  precipitation SPC and temperature LOF.
-- Regional electricity price-area (EL) and watercourse-area (VASS) views,
-  alongside the national Norway (NO-0) reference series.
+| Page | What you can do |
+| --- | --- |
+| **Home** | Open Explore, Analyse or Forecast from the preview cards. |
+| **Explore** | Choose a week from 2016 onwards and colour the map by reservoir filling, temperature or precipitation. Click a Norwegian area for reservoir statistics or a connected country for annual energy and monthly power flows. |
+| **Analyse** | Choose a region and switch between Filling STL, Filling Spectrogram, Weather SATV, Weather LOF and Weather and reservoir correlation. |
+| **Forecast** | Adjust the training period, forecast horizon, model settings and sources for NO3. The River forecast opens in weekly steps and shows an animated prediction and an uncertainty band estimated from past forecast errors. |
+| **Project information** | Find the project links, data sources and methods. |
 
 ## Run locally
 
-From the repository root:
+Use Python 3.12 and uv. Run the commands from the repository root so Streamlit finds the shared theme and local secrets.
 
 ```powershell
 uv sync
 uv run streamlit run "Compulsory Assignments/streamlit_app.py"
 ```
 
-Always start Streamlit from `IND320/`, rather than `Compulsory Assignments/`.
-Project settings are kept together in the repository root:
+Create `.streamlit/secrets.toml` in the repository root. Set your MongoDB connection string and, to enable the forecast's source updates, your ENTSO-E token.
 
-```text
-IND320/
-  .streamlit/
-    config.toml
-    secrets.toml  # Local credentials; ignored by Git.
-  pyproject.toml
-  uv.lock
-  Compulsory Assignments/
-    streamlit_app.py
-    app_pages/
-    modules/
-    assets/        # Fixed weather coordinates required by the app.
-    notebooks/
-    data/
+```toml
+[mongo]
+uri = "YOUR_MONGODB_CONNECTION_STRING"
+
+[entsoe]
+security_token = "YOUR_ENTSO_E_TOKEN"
 ```
 
-### Local MongoDB credentials
+The local secrets file is ignored by Git. For Streamlit Community Cloud, enter these values in the app's secrets settings. Use read access for the saved datasets and grant write access to the relevant collections if you enable downloads or forecast updates.
 
-Edit `.streamlit/secrets.toml` in the repository root and set the `[mongo]`
-section's `uri` value to your Atlas connection string. Replace the database
-password placeholder locally. The initial empty value must be filled before
-connecting to MongoDB. Do not share the file or include credentials in notebook
-outputs. This format follows the course's MongoDB example using
-`st.secrets["mongo"]["uri"]`.
+## Data and updates
 
-For the hosted app, enter the same TOML configuration in Streamlit Community
-Cloud's secrets settings; the local file is not uploaded through Git.
+| Source | How the app uses it |
+| --- | --- |
+| **NVE Magasinstatistikk** | Reservoir observations come from the API and are cached for one hour. |
+| **ENTSO-E Transparency Platform** | Explore reads monthly country-pair energy and power records for 2024 and 2025 from `ind320_ca2.monthly_flows`. |
+| **Open-Meteo ERA5** | Analyse reads hourly means for 100 fixed points per region from `ind320_ca3.weather_hourly`. Explore and correlation can use the prepared weekly weather in `ind320_ca4.map_weather_weekly`. Where needed, the app uses the available hourly data to calculate weekly means and totals. |
+| **NO3 forecast inputs** | The forecast reads the weekly NVE, Open-Meteo, Norges Bank and ENTSO-E values from `ind320_ca4.no3_weekly`. |
 
-### Local ENTSO-E security token
+In **Analyse**, the weather tabs can show saved hourly data for the current year. Downloads for missing historical years require confirmation and are subject to shared limits recorded in `ind320_ca3.weather_download_control`.
 
-In the repository root's `.streamlit/secrets.toml`, add your ENTSO-E security
-token as the `security_token` value under `[entsoe]`. The section is already
-present locally with an empty value ready to fill in. Keep the token out of
-notebooks, outputs, screenshots, and commits. The local secrets file is ignored
-by Git; if the hosted app needs the token later, add the same section in
-Streamlit Community Cloud's secrets settings.
+In **Forecast**, **Observation data → Update data** checks the four sources and appends complete weeks. The app records one completed check per window beginning Monday at 06:00 Oslo time in `ind320_ca4.refresh_status`. Its default forecast starts at the latest complete week available to the model.
 
-## Data
+The Norwegian overlays are based on the project shapefiles. The six country overlays use [Natural Earth Vector v5.1.1](https://github.com/nvkelso/natural-earth-vector/blob/v5.1.1/geojson/ne_50m_admin_0_countries.geojson). The app reads the prepared GeoJSON files in `assets/`.
 
-Reservoir data come directly from NVE and are cached for one hour. Country-pair
-flow records are read from `ind320_ca2.monthly_flows` in MongoDB. Hourly regional
-weather means are read from `ind320_ca3.weather_hourly` and cached for ten minutes.
+## Repository layout
 
-Weather analysis supports completed years from 1940 onwards. Missing data require
-confirmation in a dialog before an ERA5 request for 100 fixed points. Successful
-results are saved in MongoDB for other users. The connection needs read/write
-access to `ind320_ca3.weather_hourly` and `ind320_ca3.weather_download_control`.
-The latter stores only timestamps, counts and timing measurements; all rules
-and executable code are Python files in `modules/` and `app_pages/`.
+- `notebooks/` contains CA1 to CA4, including the modelling experiments and design sketch.
+- `app_pages/` contains the five Streamlit pages. `modules/` contains the data loaders, chart functions and analysis code.
+- `assets/` contains the map polygons, fixed weather coordinates and home page previews.
+- `data/ca4/no3_weekly.csv` contains the historical forecast seed. Large raw weather and ENTSO-E checkpoints stay local. Some older weather files were already tracked and remain in the repository.
+- `scripts/` contains optional data preparation tools that are run separately from the Streamlit app.
 
-App download limits are shared: 90 seconds after an attempt, a one-hour pause
-after nine attempts within an hour, and at most 19 attempts in a rolling 24 hours.
-Failed API attempts also count. Local responses are reused after interrupted
-saves without another API call. HTTP 429 stops without automatic retries and
-sets a shared pause. Usage by notebooks or other tools is not automatically
-included in the app's counters; the external API can still reject requests.
+## Data preparation
 
-The dialog's initial processing estimate is one minute; later estimates use the
-last successful app download duration. These are estimates, not guaranteed times.
-The app uses `assets/weather_locations.json` and does not import notebooks or
-need shapefiles. Local raw-weather checkpoints under `data/weather/` are optional
-for the app and are excluded from Git.
+Run the scripts from the repository root. For example, this command rebuilds the Norwegian map layer from the local shapefiles.
+
+```powershell
+uv run python "Compulsory Assignments/scripts/prepare_map_areas.py"
+```
+
+| Script | Purpose |
+| --- | --- |
+| [prepare_map_areas.py](scripts/prepare_map_areas.py) | Rebuild the Norwegian area GeoJSON from `shapefiles/`. |
+| [prepare_flow_countries.py](scripts/prepare_flow_countries.py) | Fetch the pinned Natural Earth source and rebuild the six country polygons. |
+| [seed_no3_history.py](scripts/seed_no3_history.py) | Seed the weekly NO3 history in MongoDB from the local CSV. |
+| [prepare_map_weather.py](scripts/prepare_map_weather.py) | Prepare the latest shared weather week for the map. |
+| [backfill_price_weather.py](scripts/backfill_price_weather.py) | Fill missing 2026 weather weeks for the four price areas outside NO3. Use `--water-areas` for the three VASS areas. |
+
+The two weather scripts can call Open-Meteo and write to MongoDB. The NO3 seed script also writes to MongoDB. All three use the existing app secrets.
