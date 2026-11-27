@@ -28,6 +28,9 @@ tmp/
 # Keeping CA4 raw ENTSO-E responses local.
 /Compulsory Assignments/data/ca4/2016_2025/entsoe/
 
+# Keeping CA4 raw weather responses local.
+/Compulsory Assignments/data/ca4/2016_2025/weather/NO3_20??.json
+
 # Keeping the former coursework-specific rules scoped to Compulsory Assignments.
 /Compulsory Assignments/**/__pycache__/
 /Compulsory Assignments/**/venv/
