@@ -38,6 +38,13 @@ def four_week_inputs(table):
     return table.groupby(np.arange(len(table)) // 4).agg(rules).set_axis(table.index[3::4])
 
 
+def minimum_history_weeks(p, d, q, sp, sd, sq, season_steps, step_weeks):
+    """Return the number of weeks needed for differencing, lags and one training step."""
+    # Counting the longest lag after differencing, in complete model steps.
+    longest_lag = max(p, q, season_steps * sp, season_steps * sq)
+    return (d + season_steps * sd + longest_lag + 1) * step_weeks
+
+
 def forecast_no3(data, origin, p=4, sp=0, history_weeks=260, horizon_weeks=13,
                  learning_rate=0.01, sd=0, use_weather=False, use_currency=False, use_flows=False,
                  step_weeks=1, d=0, q=0, sq=0, season_steps=None,
@@ -49,9 +56,12 @@ def forecast_no3(data, origin, p=4, sp=0, history_weeks=260, horizon_weeks=13,
     season = int(season_steps) if season_steps is not None else 52 // step_weeks
     if season < 1:
         raise ValueError("The seasonal period must be positive.")
+    if sd not in (0, 1) or horizon_weeks < 1:
+        raise ValueError("Use sd=0 or 1 and a positive horizon.")
+    required_weeks = minimum_history_weeks(p, d, q, sp, sd, sq, season, step_weeks)
+    if history_weeks < required_weeks:
+        raise ValueError(f"These model settings require at least {required_weeks} weeks of training data.")
     history = data.loc[:origin, "filling_percent"].tail(history_weeks)
-    if sd not in (0, 1) or history_weeks // step_weeks <= d + season * sd + max(p, q, season * sp, season * sq) or horizon_weeks < 1:
-        raise ValueError("Use sd=0 or 1, sufficient history for differencing/lags, and a positive horizon.")
     if len(history) != history_weeks or history.isna().any():
         raise ValueError("The training history must contain all requested weekly values.")
 

@@ -1,10 +1,12 @@
 """Forecast NO3 filling with the CA4 River model and a quantile uncertainty band."""
 
+from bisect import bisect_left, bisect_right
+
 import pandas as pd
 import streamlit as st
 from pymongo.errors import PyMongoError
 
-from modules.forecasting import EXOGENOUS_LABELS
+from modules.forecasting import EXOGENOUS_LABELS, minimum_history_weeks
 from modules.forecast_loader import load_forecast_data, run_calibrated_forecast
 from modules.forecast_update import update_weeks
 from modules.forecast_plotting import build_forecast_figure
@@ -42,6 +44,9 @@ except (OSError, ValueError) as error:
     st.stop()
 # Starting training in March, after all eight flow series have a past observation.
 dates = list(data.loc["2016-03-06":].index.date)
+if not dates:
+    st.info("No complete NO3 observations are available from March 2016 onwards.")
+    st.stop()
 refresh_panel.caption(f"Latest complete NO3 observation: {dates[-1]:%d %b %Y}.")
 # Following newly available observations when the user was viewing the latest forecast.
 prior_latest = st.session_state.get("forecast_latest_week")
@@ -50,25 +55,6 @@ if selected_window and selected_window[1] == prior_latest and dates[-1] > prior_
     st.session_state["analysis_period"] = (selected_window[0] + (dates[-1] - prior_latest), dates[-1])
 st.session_state["forecast_latest_week"] = dates[-1]
 
-
-def keep_training_year():
-    """Keep at least 52 Sunday observations, including both selected endpoints."""
-    start, end = st.session_state["analysis_period"]
-    start, end = max(start, dates[0]), max(end, dates[0])
-    span = pd.Timedelta(weeks=51)
-    if end - start < span:
-        # Stopping the moved handle at the nearest valid week.
-        if start != st.session_state.get("last_training_start", start) or start + span > dates[-1]:
-            start = max(dates[0], end - span)
-        end = max(end, start + span)
-    st.session_state["analysis_period"] = (start, end)
-    st.session_state["last_training_start"] = start
-
-
-# Bringing previously saved short periods within the same limits.
-saved_period = st.session_state.get("analysis_period")
-if saved_period and (saved_period[0] < dates[0] or (saved_period[1] - saved_period[0]).days < 357):
-    keep_training_year()
 
 # Preserving period/horizon across pages, ready for the future map's shared time controls.
 step = controls.segmented_control("Forecast interval", [1, 4], format_func={4: "Every four weeks", 1: "Weekly"}.get,
@@ -82,10 +68,8 @@ if st.session_state.get("_forecast_previous_step") != step:
 
 # Updating the forecast when a setting changes.
 with controls:
-    period = st.select_slider("Training period (minimum 52 weeks)", options=dates, value=(dates[-104], dates[-1]),
-        format_func=lambda value: value.strftime("%d %b %Y"), key="analysis_period",
-        on_change=keep_training_year, persist_state="session")
-    st.session_state["last_training_start"] = period[0]
+    # Leaving the slider above the other controls while reading model parameters first.
+    training_control = st.container()
     left, right = st.columns(2)
     with left:
         horizon = st.number_input("Forecast horizon (weeks)", min_value=step, max_value=52, step=step,
@@ -122,15 +106,36 @@ with controls:
         st.caption("Weekly uses p=4 by default. The best validation result used four-week steps and p=1. "
                    "An annual season is 13 four-week steps or 52 weekly steps.")
 
+parameters["season_steps"] = parameters.pop("m")
+minimum_weeks = max(52, minimum_history_weeks(**parameters, step_weeks=step))
+if len(dates) < minimum_weeks:
+    training_control.info(f"These model settings need {minimum_weeks} weeks, but only {len(dates)} are available. "
+                          "Reduce the model orders or season length.")
+    st.stop()
+
+# Adjusting the training range before rendering, counting both selected endpoints.
+default_weeks = min(len(dates), max(104, minimum_weeks))
+start, end = st.session_state.get("analysis_period", (dates[-default_weeks], dates[-1]))
+first = min(bisect_left(dates, start), len(dates) - 1)
+last = max(first, bisect_right(dates, end) - 1)
+if last - first + 1 < minimum_weeks:
+    # Preserving the other handle when a user shortens the range, where possible.
+    if start != st.session_state.get("last_training_start", start) or first + minimum_weeks > len(dates):
+        first = max(0, last - minimum_weeks + 1)
+    last = max(last, first + minimum_weeks - 1)
+valid_period = (dates[first], dates[last])
+if "analysis_period" in st.session_state and st.session_state["analysis_period"] != valid_period:
+    st.session_state["analysis_period"] = valid_period
+period = training_control.select_slider(f"Training period (minimum {minimum_weeks} weeks)", options=dates,
+    value=valid_period, format_func=lambda value: value.strftime("%d %b %Y"),
+    key="analysis_period", persist_state="session")
+st.session_state["last_training_start"] = period[0]
+
 # Using complete blocks within the selected timeframe and explaining any trimmed first weeks.
 window = data.loc[pd.Timestamp(period[0]):pd.Timestamp(period[1])]
 history_weeks = len(window) // step * step
-if history_weeks == 0:
-    st.error("Choose a longer training period.")
-    st.stop()
 effective_start, origin = window.index[-history_weeks], window.index[-1]
-settings = dict(p=parameters["p"], d=parameters["d"], q=parameters["q"], sp=parameters["sp"],
-    sd=parameters["sd"], sq=parameters["sq"], season_steps=parameters["m"], step_weeks=step,
+settings = dict(**parameters, step_weeks=step,
     history_weeks=history_weeks, horizon_weeks=int(horizon), learning_rate=learning_rate,
     exogenous_columns=tuple(variables))
 try:
